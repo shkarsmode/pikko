@@ -114,7 +114,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         const watch = (w) =>
           w &&
           w.addEventListener('statechange', () => {
-            if (w.state === 'activated' && first && !overlayOpen()) toast(t('toast.offline'));
+            if (w.state === 'activated' && first) setTimeout(() => !overlayOpen() && toast(t('toast.offline')), 1600);
           });
         watch(reg.installing);
         reg.addEventListener('updatefound', () => watch(reg.installing));

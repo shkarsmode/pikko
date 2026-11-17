@@ -580,7 +580,7 @@ export class Engine {
     r.at(tm + 0.22, (t0) => {
       this.crown(r, win, t0);
       live.forEach((o, i) => o !== win && this.exitOrb(r, o, t0 + i * 0.035, 0.3));
-      this.toResult(r, t0 + 0.6, { text: t('cap.winner') });
+      this.toResult(r, t0 + 0.6, { text: t(`cap.win${1 + rnd(4)}`) });
     });
   }
 

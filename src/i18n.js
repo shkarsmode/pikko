@@ -31,6 +31,10 @@ const S = {
   // in-game captions
   'cap.wait': ['Waiting for more players…', 'Ждём ещё игроков…', 'Чекаємо ще гравців…'],
   'cap.winner': ['Chosen!', 'Выбран!', 'Обрано!'],
+  'cap.win1': ['Chosen!', 'Выбран!', 'Обрано!'],
+  'cap.win2': ['You’re it!', 'Тебе водить!', 'Тобі водити!'],
+  'cap.win3': ['Fate has spoken', 'Судьба решила', 'Доля вирішила'],
+  'cap.win4': ['Your move!', 'Твой ход!', 'Твій хід!'],
   'cap.winners': ['Chosen: {n}', 'Выбраны: {n}', 'Обрано: {n}'],
   'cap.order': ['The order is set', 'Очередь готова', 'Черга готова'],
   'cap.last': ['Last one standing!', 'Остался один!', 'Залишився один!'],

@@ -36,10 +36,31 @@ export function buildHud() {
   els.top = h('div', { class: 'top' }, els.settingsBtn, els.modeChip, els.proBtn);
 
   els.sound = h('div', { class: 'sound-hint glass' }, icon('speaker'), h('span', { text: t('sound.tap') }));
+  // soft drifting light behind the idle screen
+  els.ambient = h(
+    'div',
+    { class: 'ambient', 'aria-hidden': 'true' },
+    [
+      ['#9b7bff', '18%', '22%', '62vmin', '13s'],
+      ['#ff4d6d', '84%', '34%', '56vmin', '11s'],
+      ['#38bdf8', '22%', '78%', '58vmin', '15s'],
+      ['#2ee59d', '80%', '86%', '44vmin', '12s'],
+    ].map(([c, x, y, s, d]) => h('i', { style: { '--c': c, '--x': x, '--y': y, '--s': s, '--d': d } })),
+  );
+  // "players" orbiting the hint orb, like on the app icon
+  const orbit = h(
+    'span',
+    { class: 'hint-orbit' },
+    [
+      ['#2ee59d', 0],
+      ['#38bdf8', 120],
+      ['#ffb020', 240],
+    ].map(([c, a]) => h('i', { style: { '--c': c, '--a': `${a}deg` } })),
+  );
   els.hint = h(
     'div',
     { class: 'hint', 'aria-live': 'polite' },
-    h('div', { class: 'hint-art', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), h('b')),
+    h('div', { class: 'hint-art', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), orbit, h('b')),
     (els.hintTitle = h('div', { class: 'hint-title' })),
     (els.hintSub = h('div', { class: 'hint-sub' })),
     h('div', { class: 'hint-mouse', text: t('hint.mouse') }),
@@ -59,7 +80,7 @@ export function buildHud() {
   els.mkbar = h('div', { class: 'mkbar' }, els.mkClear, els.mkGo);
 
   els.banner = h('div', { class: 'banner glass', 'data-ui': '' });
-  hud.append(els.top, els.hint, els.wait, els.caption, els.big, els.mkbar, els.banner);
+  hud.append(els.ambient, els.top, els.hint, els.wait, els.caption, els.big, els.mkbar, els.banner);
   renderTexts();
   renderBanner();
   onEngineState(ui.state);

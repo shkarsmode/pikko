@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer-core';
 
 const BASE = (process.argv.find((a) => a.startsWith('http')) || 'http://localhost:5199').replace(/\/$/, '');
 const SHOTS = process.argv.includes('--shots');
+const LANG = (process.argv.find((a) => a.startsWith('--lang=')) || '--lang=ru-RU').slice(7);
 const OUT = 'test-shots';
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1';
@@ -21,7 +22,7 @@ const check = (name, ok, detail = '') => {
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--hide-scrollbars'] });
 
-async function open({ lang = 'ru-RU', url = '/', w = 393, h = 852 } = {}) {
+async function open({ lang = LANG, url = '/', w = 393, h = 852 } = {}) {
   const ctx = await browser.createBrowserContext();
   const page = await ctx.newPage();
   page.errors = [];
@@ -112,7 +113,8 @@ try {
   }));
   check('iOS meta: capable + touch icon + splash', meta.capable === 'yes' && meta.touchIcon && meta.splash >= 20, `${meta.splash} splash links`);
   check('viewport covers notch', meta.viewport.includes('viewport-fit=cover'));
-  check('manifest localized', meta.manifest.endsWith('/manifest-ru.webmanifest'), meta.manifest);
+  const wantManifest = LANG.startsWith('ru') ? '/manifest-ru.webmanifest' : LANG.startsWith('uk') ? '/manifest-uk.webmanifest' : '/manifest.webmanifest';
+  check('manifest localized', meta.manifest.endsWith(wantManifest), meta.manifest);
 
   // ---------- 2. pick one, 3 fingers ----------
   let hs = await down(p, PTS.slice(0, 3));
@@ -234,7 +236,7 @@ try {
   await sleep(700);
   await snap(p, '19-reflex-result');
   const cap = await captionText(p);
-  check('reflex: winner with reaction time', /\d+\s?мс/.test(cap), cap);
+  check('reflex: winner with reaction time', /\d+\s?(мс|ms)/.test(cap), cap);
   await upAll(hs.slice(2));
   await waitPhase(p, 'idle', 5000);
 
@@ -352,7 +354,7 @@ try {
       await p.tap('.paywall-modal .plan[data-plan="week"]');
       await sleep(200);
       const lbl = await p.$eval('.paywall-modal .cta .lbl', (e) => e.textContent);
-      check('paywall: choosing weekly turns the trial off', !/бесплатно/i.test(lbl), lbl);
+      check('paywall: choosing weekly turns the trial off', !/(бесплатно|безкоштовно|free)/i.test(lbl), lbl);
       await p.evaluate(() => document.querySelector('.pm-scroll').scrollTo(0, 0));
       await sleep(200);
       await p.tap('.paywall-modal .pm-x');
