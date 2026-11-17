@@ -4,3 +4,6 @@ test-shots/
 tmp/
 .vercel/
 *.log
+
+.vercel
+.env*
