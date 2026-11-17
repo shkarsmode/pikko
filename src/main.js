@@ -108,6 +108,12 @@ window.addEventListener('appinstalled', () => {
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
   window.addEventListener('load', () => {
     const first = !navigator.serviceWorker.controller;
+    // A new version took over: apply it right away if nothing is going on,
+    // so an installed app does not need a second launch to update.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (first) return;
+      if (engine.snapshot().phase === 'idle' && !overlayOpen()) location.reload();
+    });
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
