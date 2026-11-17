@@ -1,45 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="bg" x1="0.1" y1="0" x2="0.9" y2="1">
-      <stop offset="0" stop-color="#3b2391"/>
-      <stop offset="0.52" stop-color="#1d1252"/>
-      <stop offset="1" stop-color="#0b0820"/>
-    </linearGradient>
-    <radialGradient id="hl" cx="0.28" cy="0.14" r="0.75">
-      <stop offset="0" stop-color="#8f6bff" stop-opacity="0.5"/>
-      <stop offset="1" stop-color="#8f6bff" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#ff4d6d" stop-opacity="0.8"/>
-      <stop offset="0.42" stop-color="#ff4d6d" stop-opacity="0.26"/>
-      <stop offset="1" stop-color="#ff4d6d" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="core" cx="0.36" cy="0.31" r="0.78">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.16" stop-color="#ffdbe2"/>
-      <stop offset="0.58" stop-color="#ff4d6d"/>
-      <stop offset="1" stop-color="#ad1747"/>
-    </radialGradient>
-    <radialGradient id="gMint" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2ee59d" stop-opacity="0.6"/><stop offset="1" stop-color="#2ee59d" stop-opacity="0"/></radialGradient>
-    <radialGradient id="gSky" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#38bdf8" stop-opacity="0.6"/><stop offset="1" stop-color="#38bdf8" stop-opacity="0"/></radialGradient>
-    <radialGradient id="gAmber" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffb020" stop-opacity="0.6"/><stop offset="1" stop-color="#ffb020" stop-opacity="0"/></radialGradient>
-  </defs>
-  <rect width="1024" height="1024" fill="url(#bg)"/>
-  <rect width="1024" height="1024" fill="url(#hl)"/>
-  <g id="art">
-    <circle cx="512" cy="530" r="430" fill="url(#glow)"/>
-    <circle cx="512" cy="530" r="322" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="7" stroke-linecap="round" stroke-dasharray="2 30"/>
-    <circle cx="236" cy="330" r="96" fill="url(#gMint)"/>
-    <circle cx="236" cy="330" r="46" fill="#2ee59d"/>
-    <circle cx="818" cy="414" r="84" fill="url(#gSky)"/>
-    <circle cx="818" cy="414" r="40" fill="#38bdf8"/>
-    <circle cx="744" cy="842" r="88" fill="url(#gAmber)"/>
-    <circle cx="744" cy="842" r="42" fill="#ffb020"/>
-    <circle cx="512" cy="530" r="202" fill="none" stroke="#ffffff" stroke-width="30"/>
-    <circle cx="512" cy="530" r="148" fill="url(#core)"/>
-    <circle cx="300" cy="652" r="15" fill="#ffffff" opacity="0.92"/>
-    <circle cx="700" cy="380" r="15" fill="#ffffff" opacity="0.92"/>
-    <circle cx="560" cy="282" r="15" fill="#ffffff" opacity="0.92"/>
-    <path d="M806 168l16 58 58 16-58 16-16 58-16-58-58-16 58-16z" fill="#ffffff"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14171e"/><stop offset="1" stop-color="#07080b"/></linearGradient>
+  <pattern id="dots" width="56" height="56" patternUnits="userSpaceOnUse"><circle cx="28" cy="28" r="3" fill="#ffffff" fill-opacity=".085"/></pattern>
+  <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#3dff9a" stop-opacity=".34"/><stop offset="1" stop-color="#3dff9a" stop-opacity="0"/></radialGradient>
+  <radialGradient id="g-4dd7ff" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#4dd7ff" stop-opacity=".45"/><stop offset="1" stop-color="#4dd7ff" stop-opacity="0"/></radialGradient><radialGradient id="g-ffb547" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb547" stop-opacity=".45"/><stop offset="1" stop-color="#ffb547" stop-opacity="0"/></radialGradient><radialGradient id="g-ff5c7a" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff5c7a" stop-opacity=".45"/><stop offset="1" stop-color="#ff5c7a" stop-opacity="0"/></radialGradient>
+</defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/><rect width="1024" height="1024" fill="url(#dots)"/>
+  <g transform="translate(512 512) scale(1) translate(-512 -512)">
+  <circle cx="512" cy="512" r="300" fill="url(#glow)"/>
+  <path d="M230.5 603.5L194.3 615.2M219.6 558.3L182.1 564.2M216.0 512.0L160.0 512.0M219.6 465.7L182.1 459.8M230.5 420.5L194.3 408.8M248.3 377.6L214.4 360.4M272.5 338.0L241.8 315.7M302.7 302.7L275.8 275.8M338.0 272.5L315.7 241.8M377.6 248.3L360.4 214.4M420.5 230.5L408.8 194.3M465.7 219.6L459.8 182.1" stroke="#ffffff" stroke-opacity=".22" stroke-width="12"/>
+  <path d="M512.0 216.0L512.0 160.0M558.3 219.6L564.2 182.1M603.5 230.5L615.2 194.3M646.4 248.3L663.6 214.4M686.0 272.5L708.3 241.8M721.3 302.7L748.2 275.8M751.5 338.0L782.2 315.7M775.7 377.6L809.6 360.4M793.5 420.5L829.7 408.8M804.4 465.7L841.9 459.8M808.0 512.0L864.0 512.0M804.4 558.3L841.9 564.2M793.5 603.5L829.7 615.2M775.7 646.4L809.6 663.6M751.5 686.0L782.2 708.3M721.3 721.3L748.2 748.2M686.0 751.5L708.3 782.2M646.4 775.7L663.6 809.6M603.5 793.5L615.2 829.7M558.3 804.4L564.2 841.9M512.0 808.0L512.0 864.0M465.7 804.4L459.8 841.9M420.5 793.5L408.8 829.7M377.6 775.7L360.4 809.6M338.0 751.5L315.7 782.2M302.7 721.3L275.8 748.2M272.5 686.0L241.8 708.3M248.3 646.4L214.4 663.6" stroke="#3dff9a" stroke-width="12"/>
+  <circle cx="512" cy="512" r="228" fill="none" stroke="#eceef2" stroke-width="16"/>
+  <circle cx="512" cy="512" r="96" fill="#3dff9a"/>
+  <circle cx="512" cy="512" r="22" fill="#07080b"/>
+  <path d="M252 160L160 160L160 252M772 160L864 160L864 252M772 864L864 864L864 772M252 864L160 864L160 772" fill="none" stroke="#eceef2" stroke-width="22" stroke-linecap="square"/>
+  <circle cx="793.4" cy="793.4" r="64" fill="url(#g-4dd7ff)"/><circle cx="793.4" cy="793.4" r="25" fill="#4dd7ff"/><circle cx="230.6" cy="793.4" r="64" fill="url(#g-ffb547)"/><circle cx="230.6" cy="793.4" r="25" fill="#ffb547"/><circle cx="793.4" cy="230.6" r="64" fill="url(#g-ff5c7a)"/><circle cx="793.4" cy="230.6" r="25" fill="#ff5c7a"/></g></svg>

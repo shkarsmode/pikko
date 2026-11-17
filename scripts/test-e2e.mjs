@@ -272,7 +272,7 @@ try {
   await waitPhase(p, 'result', 8000);
   check('markers: "again" reruns with same markers', (await p.evaluate(() => window.__pikko.engine.round.markers.length)) === 7);
   await sleep(500);
-  await p.tap('.mk-btn.glass');
+  await p.tap('.mk-btn:not(.primary)');
   await waitPhase(p, 'idle', 3000);
   await setMode(p, { markers: false });
 
@@ -326,6 +326,25 @@ try {
   await sleep(500);
   const swiped = await p.evaluate(() => document.querySelector('.settings-sheet .sheet-body').scrollTop);
   check('settings sheet scrolls with a touch swipe', swiped > 100, `scrollTop ${swiped}`);
+  // the original bug: a swipe that starts on a menu row must scroll, not open it
+  const rowAt = await p.evaluate(() => {
+    const r = document.querySelectorAll('.settings-sheet .group')[2].querySelectorAll('.row.tap')[1];
+    r.scrollIntoView({ block: 'center' });
+    const b = r.getBoundingClientRect();
+    return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  });
+  await sleep(300);
+  for (const dir of [-1, 1]) {
+    const sw2 = await p.touchscreen.touchStart(rowAt.x, rowAt.y);
+    for (let i = 1; i <= 8; i++) {
+      await sw2.move(rowAt.x + i * 2, rowAt.y + dir * i * 22);
+      await sleep(16);
+    }
+    await sw2.end();
+    await sleep(450);
+  }
+  const layersAfter = await p.evaluate(() => document.querySelectorAll('.layer:not(.closing)').length);
+  check('swiping across a menu row scrolls and never opens it', layersAfter === 1, `${layersAfter} layers open`);
   await p.evaluate(() => document.querySelector('.settings-sheet .sheet-body').scrollTo(0, 99999));
   await sleep(300);
   await snap(p, '25-settings-bottom');
@@ -346,6 +365,22 @@ try {
     );
     check(`promo "${k}" opens from settings`, shown);
     await sleep(k === 'paywall' ? 2700 : 1100);
+    // the panel must really be on screen: opaque, not shifted away, CTA tappable
+    const vis = await p.evaluate((s) => {
+      const root = document.querySelector(s);
+      const cta = root && root.querySelector('.cta');
+      if (!cta) return 'no cta';
+      let el = cta;
+      let op = 1;
+      while (el && el !== document.body) {
+        op *= parseFloat(getComputedStyle(el).opacity);
+        el = el.parentElement;
+      }
+      const r = cta.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 20));
+      return op > 0.95 && r.width > 100 && r.bottom > 0 && r.top < innerHeight && hit && cta.contains(hit) ? 'ok' : `opacity ${op.toFixed(2)}, top ${Math.round(r.top)}, hit ${hit && hit.className}`;
+    }, sel);
+    check(`promo "${k}" is visible and its button is tappable`, vis === 'ok', vis);
     await snap(p, `26-promo-${k}`);
     if (k === 'paywall') {
       await p.evaluate(() => document.querySelector('.pm-scroll').scrollTo(0, 99999));

@@ -1,5 +1,5 @@
-// Renders icons, iOS splash screens and the share image from SVG/HTML with
-// the locally installed Chrome. Run: npm run assets (outputs go to public/).
+// Renders the app icon, iOS splash screens and the share image with the
+// locally installed Chrome. Run: npm run assets (outputs go to public/).
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
@@ -7,26 +7,75 @@ import puppeteer from 'puppeteer-core';
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1')), '..');
 const pub = path.join(root, 'public');
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const ACC = '#3dff9a';
 
-const iconSvg = fs.readFileSync(path.join(root, 'assets-src/icon.svg'), 'utf8');
-const b64 = (s) => `data:image/svg+xml;base64,${Buffer.from(s).toString('base64')}`;
+// The reticle: dial (70% lit), ring, core, lock-on brackets, three players.
+function reticle({ withNodes = true } = {}) {
+  let ticks = '';
+  let lit = '';
+  for (let i = 0; i < 40; i++) {
+    const a = -Math.PI / 2 + (i / 40) * Math.PI * 2;
+    const r0 = 296;
+    const r1 = i % 10 === 0 ? 352 : 334;
+    const seg = `M${(512 + Math.cos(a) * r0).toFixed(1)} ${(512 + Math.sin(a) * r0).toFixed(1)}L${(512 + Math.cos(a) * r1).toFixed(1)} ${(512 + Math.sin(a) * r1).toFixed(1)}`;
+    if (i < 28) lit += seg;
+    else ticks += seg;
+  }
+  const B = 352;
+  const arm = 92;
+  const br = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ]
+    .map(([sx, sy]) => {
+      const cx = 512 + sx * B;
+      const cy = 512 + sy * B;
+      return `M${cx - sx * arm} ${cy}L${cx} ${cy}L${cx} ${cy - sy * arm}`;
+    })
+    .join('');
+  const node = (deg, color) => {
+    const a = (deg * Math.PI) / 180;
+    const x = 512 + Math.cos(a) * 398;
+    const y = 512 + Math.sin(a) * 398;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="64" fill="url(#g-${color.slice(1)})"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="25" fill="${color}"/>`;
+  };
+  return `
+  <circle cx="512" cy="512" r="300" fill="url(#glow)"/>
+  <path d="${ticks}" stroke="#ffffff" stroke-opacity=".22" stroke-width="12"/>
+  <path d="${lit}" stroke="${ACC}" stroke-width="12"/>
+  <circle cx="512" cy="512" r="228" fill="none" stroke="#eceef2" stroke-width="16"/>
+  <circle cx="512" cy="512" r="96" fill="${ACC}"/>
+  <circle cx="512" cy="512" r="22" fill="#07080b"/>
+  <path d="${br}" fill="none" stroke="#eceef2" stroke-width="22" stroke-linecap="square"/>
+  ${withNodes ? node(45, '#4dd7ff') + node(135, '#ffb547') + node(-45, '#ff5c7a') : ''}`;
+}
 
-// maskable: same art, shrunk into the 80% safe zone
-const maskSvg = iconSvg.replace('<g id="art">', '<g id="art" transform="translate(512 530) scale(0.8) translate(-512 -530)">');
+const defs = `<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14171e"/><stop offset="1" stop-color="#07080b"/></linearGradient>
+  <pattern id="dots" width="56" height="56" patternUnits="userSpaceOnUse"><circle cx="28" cy="28" r="3" fill="#ffffff" fill-opacity=".085"/></pattern>
+  <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${ACC}" stop-opacity=".34"/><stop offset="1" stop-color="${ACC}" stop-opacity="0"/></radialGradient>
+  ${['4dd7ff', 'ffb547', 'ff5c7a'].map((c) => `<radialGradient id="g-${c}" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#${c}" stop-opacity=".45"/><stop offset="1" stop-color="#${c}" stop-opacity="0"/></radialGradient>`).join('')}
+</defs>`;
+
+const iconSvg = (scale = 1) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${defs}
+  <rect width="1024" height="1024" fill="url(#bg)"/><rect width="1024" height="1024" fill="url(#dots)"/>
+  <g transform="translate(512 512) scale(${scale}) translate(-512 -512)">${reticle()}</g></svg>`;
+
+const glyphSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${defs}${reticle({ withNodes: true })}</svg>`;
 
 const favSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b2391"/><stop offset="1" stop-color="#0b0820"/></linearGradient>
-<radialGradient id="c" cx=".36" cy=".31" r=".78"><stop offset="0" stop-color="#fff"/><stop offset=".2" stop-color="#ffdbe2"/><stop offset=".6" stop-color="#ff4d6d"/><stop offset="1" stop-color="#ad1747"/></radialGradient></defs>
-<rect width="64" height="64" rx="15" fill="url(#b)"/><circle cx="32" cy="33" r="15.5" fill="none" stroke="#fff" stroke-width="3.4"/><circle cx="32" cy="33" r="11" fill="url(#c)"/>
-<circle cx="13" cy="17" r="4.4" fill="#2ee59d"/><circle cx="52" cy="22" r="3.8" fill="#38bdf8"/><circle cx="47" cy="53" r="4" fill="#ffb020"/></svg>`;
+<rect width="64" height="64" rx="14" fill="#0d0f13"/><circle cx="32" cy="32" r="15" fill="none" stroke="#eceef2" stroke-width="3.2"/>
+<circle cx="32" cy="32" r="7" fill="${ACC}"/><path d="M10 18V10h8M46 10h8v8M54 46v8h-8M18 54h-8v-8" fill="none" stroke="#eceef2" stroke-width="3" stroke-linecap="square"/></svg>`;
 
-const GIFT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="22" fill="#2a1d5c"/>
-<rect x="22" y="44" width="52" height="36" rx="6" fill="#ff5a80"/><rect x="18" y="34" width="60" height="14" rx="5" fill="#ff8fab"/>
-<rect x="43" y="34" width="10" height="46" fill="#ffc53d"/><path d="M48 34c-6-12-20-13-18-5 1 5 11 5 18 5zM48 34c6-12 20-13 18-5-1 5-11 5-18 5z" fill="#ffc53d"/></svg>`;
-
-const modeShortcut = (color, inner) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="22" fill="#1d1640"/><g transform="translate(16 16) scale(2)" color="${color}">${inner}</g></svg>`;
-const ONE = '<circle cx="6" cy="8" r="2.6" fill="currentColor" opacity=".4"/><circle cx="26.5" cy="9" r="2.6" fill="currentColor" opacity=".4"/><circle cx="24" cy="26" r="2.6" fill="currentColor" opacity=".4"/><circle cx="15" cy="17" r="5.2" fill="currentColor"/><circle cx="15" cy="17" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/>';
-const TEAMS = '<circle cx="7" cy="10" r="3.6" fill="currentColor"/><circle cx="9" cy="22" r="3.6" fill="currentColor"/><path d="M7 10L9 22" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="23" cy="22" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M25 13.6l-1.6 4.8" stroke="currentColor" stroke-width="2"/>';
+const tile = (inner, color = '#eceef2') =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="22" fill="#0d0f13"/><g transform="translate(24 24) scale(2)" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</g></svg>`;
+const SHORTCUTS = {
+  'shortcut-gift.png': tile('<path d="M4 9h16v4H4zM5.5 13h13v7.5h-13zM12 9v11.5M12 9C10 5 6.5 5.5 7.5 8 8 9 12 9 12 9zM12 9c2-4 5.5-3.5 4.5-1C16 9 12 9 12 9z"/>', ACC),
+  'shortcut-one.png': tile('<circle cx="12" cy="12" r="4.2"/><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/>', ACC),
+  'shortcut-teams.png': tile('<circle cx="5.5" cy="7.5" r="2.2"/><circle cx="6.5" cy="16.5" r="2.2"/><circle cx="18.5" cy="7.5" r="2.2"/><circle cx="17.5" cy="16.5" r="2.2"/><path d="M12 3v18" stroke-dasharray="1.5 2.5"/>', '#4dd7ff'),
+};
 
 // iPhone screens (portrait CSS size, pixel ratio). device-height is only
 // used where two phones share a width: iOS 27.0 misreads it at launch
@@ -47,30 +96,30 @@ const DEVICES = [
   [320, 568, 2],
 ];
 
+const b64 = (s) => `data:image/svg+xml;base64,${Buffer.from(s).toString('base64')}`;
+
 function splashHtml(w, h) {
-  const s = Math.min(w, h);
-  const orb = Math.round(s * 0.2);
+  const size = Math.round(Math.min(w, h) * 0.46);
   return `<!doctype html><html><head><style>
-  html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;background:#0b0914}
-  .bg{position:fixed;inset:0;background:#0b0914}
-  .o{position:fixed;left:50%;top:50%;width:${orb}px;height:${orb}px;margin:${-orb / 2}px;border-radius:50%;
-    background:radial-gradient(circle at 34% 30%,#fff 0,#ffd3dc 16%,#ff4d6d 58%,#a51c45 100%);
-    box-shadow:0 0 ${orb * 0.8}px rgba(255,77,109,.6),0 0 0 ${orb * 0.16}px rgba(255,77,109,.13)}
-  .r{position:fixed;left:50%;top:50%;width:${orb * 1.6}px;height:${orb * 1.6}px;margin:${-orb * 0.8}px;border-radius:50%;border:${Math.max(2, orb * 0.04)}px solid rgba(255,255,255,.85)}
-  </style></head><body><div class="bg"></div><div class="r"></div><div class="o"></div></body></html>`;
+  html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;background:#07080b}
+  .bg{position:fixed;inset:0;background:radial-gradient(circle at 1px 1px, rgba(255,255,255,.075) 1px, transparent 1.4px) 0 0/22px 22px,#07080b}
+  img{position:fixed;left:50%;top:50%;width:${size}px;height:${size}px;margin:${-size / 2}px 0 0 ${-size / 2}px}
+  </style></head><body><div class="bg"></div><img src="${b64(glyphSvg)}"></body></html>`;
 }
 
 const ogHtml = `<!doctype html><html><head><style>
-html,body{margin:0;width:1200px;height:630px;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;color:#fff}
-.bg{position:fixed;inset:0;background:radial-gradient(90% 90% at 20% 10%,#3b2391 0%,rgba(59,35,145,0) 60%),radial-gradient(70% 80% at 100% 100%,rgba(255,77,109,.35),rgba(255,77,109,0) 60%),#0b0914}
-img{position:fixed;left:110px;top:135px;width:360px;height:360px;border-radius:84px;box-shadow:0 40px 90px rgba(0,0,0,.5)}
-h1{position:fixed;left:540px;top:150px;margin:0;font-size:132px;font-weight:800;letter-spacing:-3px}
-p{position:fixed;left:546px;top:330px;margin:0;font-size:40px;line-height:1.3;color:rgba(255,255,255,.78);width:560px}
-</style></head><body><div class="bg"></div><img src="${b64(iconSvg)}"><h1>Pikko</h1><p>Everyone puts a finger down.<br>Pikko picks one.</p></body></html>`;
+html,body{margin:0;width:1200px;height:630px;overflow:hidden;color:#eceef2;font-family:'Segoe UI',system-ui,sans-serif}
+.bg{position:fixed;inset:0;background:radial-gradient(60% 80% at 22% 50%,rgba(61,255,154,.12),rgba(61,255,154,0) 70%),radial-gradient(circle at 1px 1px,rgba(255,255,255,.07) 1px,transparent 1.4px) 0 0/24px 24px,#07080b}
+img{position:fixed;left:96px;top:135px;width:360px;height:360px;border-radius:82px;box-shadow:0 40px 90px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08)}
+h1{position:fixed;left:530px;top:150px;margin:0;font-size:124px;font-weight:700;letter-spacing:-4px}
+p{position:fixed;left:536px;top:322px;margin:0;font:500 30px/1.55 Consolas,'Cascadia Code',monospace;color:#99a0ac}
+p b{color:#3dff9a;font-weight:500}
+</style></head><body><div class="bg"></div><img src="${b64(iconSvg())}"><h1>Pikko</h1><p><b>$</b> pikko --pick 1<br>fair finger picker<br>for iPhone · PWA</p></body></html>`;
 
 async function main() {
   fs.mkdirSync(path.join(pub, 'icons'), { recursive: true });
   fs.mkdirSync(path.join(pub, 'splash'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'assets-src/icon.svg'), iconSvg());
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--hide-scrollbars', '--force-color-profile=srgb'] });
   const page = await browser.newPage();
 
@@ -81,16 +130,14 @@ async function main() {
     await page.screenshot({ path: path.join(pub, file), omitBackground: true });
   };
 
-  await shotSvg(iconSvg, 512, 'icons/icon-512.png');
-  await shotSvg(iconSvg, 192, 'icons/icon-192.png');
-  await shotSvg(iconSvg, 180, 'icons/apple-touch-icon.png');
-  await shotSvg(maskSvg, 512, 'icons/maskable-512.png');
+  await shotSvg(iconSvg(), 512, 'icons/icon-512.png');
+  await shotSvg(iconSvg(), 192, 'icons/icon-192.png');
+  await shotSvg(iconSvg(), 180, 'icons/apple-touch-icon.png');
+  await shotSvg(iconSvg(0.8), 512, 'icons/maskable-512.png');
   await shotSvg(favSvg, 32, 'icons/favicon-32.png');
-  await shotSvg(GIFT_SVG, 96, 'icons/shortcut-gift.png');
-  await shotSvg(modeShortcut('#ff5c7a', ONE), 96, 'icons/shortcut-one.png');
-  await shotSvg(modeShortcut('#38bdf8', TEAMS), 96, 'icons/shortcut-teams.png');
+  for (const [file, svg] of Object.entries(SHORTCUTS)) await shotSvg(svg, 96, `icons/${file}`);
   fs.writeFileSync(path.join(pub, 'icons/favicon.svg'), favSvg);
-  fs.writeFileSync(path.join(pub, 'icons/icon.svg'), iconSvg);
+  fs.writeFileSync(path.join(pub, 'icons/icon.svg'), iconSvg());
 
   const links = [];
   for (const [w, h, dpr, needH] of DEVICES) {
@@ -100,6 +147,7 @@ async function main() {
       const file = `splash/${w}x${h}@${dpr}-${orient[0]}.png`;
       await page.setViewport({ width: vw, height: vh, deviceScaleFactor: dpr });
       await page.setContent(splashHtml(vw, vh));
+      await page.waitForFunction(() => [...document.images].every((i) => i.complete));
       await page.screenshot({ path: path.join(pub, file) });
       const media = `(device-width: ${w}px)${needH ? ` and (device-height: ${h}px)` : ''} and (-webkit-device-pixel-ratio: ${dpr}) and (orientation: ${orient})`;
       links.push(`<link rel="apple-touch-startup-image" media="${media}" href="/${file}">`);

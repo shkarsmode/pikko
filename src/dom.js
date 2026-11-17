@@ -1,6 +1,6 @@
 // DOM helpers shared by the HUD, sheets and promo screens.
 import { sfx } from './audio.js';
-import { HAS_SWITCH, onTap } from './haptics.js';
+import { HAS_SWITCH } from './haptics.js';
 import { ICONS } from './icons.js';
 import { t } from './i18n.js';
 
@@ -17,8 +17,7 @@ export function h(tag, attrs, ...kids) {
           if (prop.startsWith('--')) el.style.setProperty(prop, String(val));
           else el.style[prop] = val;
         }
-      }
-      else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+      } else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
       else el.setAttribute(k, v === true ? '' : v);
     }
   }
@@ -31,20 +30,80 @@ export function h(tag, attrs, ...kids) {
 
 export const icon = (name, cls = 'ic') => h('span', { class: cls, html: ICONS[name] || '' });
 
-// Replace an element's content, skipping empty values and keeping the
-// invisible haptic switch that onTap() put inside it.
+// Replace an element's content, skipping empty values.
 export function fill(el, ...kids) {
-  const hx = el.querySelector(':scope > .hx');
   el.replaceChildren(...kids.flat(3).filter((k) => k != null && k !== false));
-  if (hx) el.append(hx);
   return el;
 }
 
-// A button whose taps get the native iOS switch tick when available.
+// ---------- native-feeling taps ----------
+// Like UIKit: a tap counts only if the finger stayed put and nothing scrolled
+// under it, and inside scrolling lists the pressed look waits ~90 ms so a
+// swipe never flashes or triggers rows.
+const g = { id: null, x: 0, y: 0, moved: false, scrolled: false, el: null, timer: 0 };
+const unpress = () => {
+  clearTimeout(g.timer);
+  if (g.el) g.el.classList.remove('pressing');
+};
+document.addEventListener(
+  'pointerdown',
+  (e) => {
+    unpress();
+    g.id = e.pointerId;
+    g.x = e.clientX;
+    g.y = e.clientY;
+    g.moved = false;
+    g.scrolled = false;
+    g.el = e.target.closest ? e.target.closest('[data-press]') : null;
+    if (!g.el || g.el.disabled) return;
+    const el = g.el;
+    const delay = el.closest('.sheet-body, .pm-scroll') ? 90 : 0;
+    g.timer = setTimeout(() => !g.moved && !g.scrolled && el.classList.add('pressing'), delay);
+  },
+  true,
+);
+document.addEventListener(
+  'pointermove',
+  (e) => {
+    if (e.pointerId !== g.id || g.moved) return;
+    if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 10) {
+      g.moved = true;
+      unpress();
+    }
+  },
+  true,
+);
+document.addEventListener(
+  'scroll',
+  () => {
+    if (g.id === null) return;
+    g.scrolled = true;
+    unpress();
+  },
+  true,
+);
+const release = (e) => {
+  if (e.pointerId !== g.id) return;
+  g.id = null;
+  if (e.type === 'pointercancel') g.moved = true;
+  const el = g.el;
+  clearTimeout(g.timer);
+  if (el && !g.moved && !g.scrolled && e.type === 'pointerup') {
+    el.classList.add('pressing');
+    setTimeout(() => el.classList.remove('pressing'), 130);
+  } else unpress();
+};
+document.addEventListener('pointerup', release, true);
+document.addEventListener('pointercancel', release, true);
+
+// keyboard clicks (detail 0) always count
+export const cleanTap = (e) => !e || e.detail === 0 || (!g.moved && !g.scrolled);
+
 export function button(attrs, kids, fn) {
-  const el = h('button', Object.assign({ type: 'button' }, attrs), kids);
+  const el = h('button', Object.assign({ type: 'button', 'data-press': '' }, attrs), kids);
   if (fn)
-    onTap(el, (e) => {
+    el.addEventListener('click', (e) => {
+      if (!cleanTap(e) || el.disabled) return;
       sfx.ui();
       fn(e);
     });
@@ -104,12 +163,16 @@ export function sheet({ title = '', content, cls = '', tall = false, onClose }) 
     },
   };
   back.addEventListener('click', () => api.close());
-  dragToDismiss(panel, [grab, head], () => api.close());
+  dragHandles(panel, [grab, head], () => api.close());
+  pullDown(panel, body, () => api.close());
   mount(root, api);
   return api;
 }
 
-function dragToDismiss(panel, handles, close) {
+const shouldClose = (dy, ms) => dy > 120 || (dy > 36 && dy / Math.max(1, ms) > 0.55);
+
+// drag the grabber or the title bar down to dismiss
+function dragHandles(panel, handles, close) {
   let y0 = 0;
   let dy = 0;
   let t0 = 0;
@@ -123,11 +186,8 @@ function dragToDismiss(panel, handles, close) {
     if (e.pointerId !== id) return;
     id = null;
     panel.classList.remove('dragging');
-    const v = dy / Math.max(1, performance.now() - t0);
-    if (dy > 110 || (v > 0.6 && dy > 30)) {
-      panel.style.transform = '';
-      close();
-    } else panel.style.transform = '';
+    panel.style.transform = '';
+    if (shouldClose(dy, performance.now() - t0)) close();
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
     window.removeEventListener('pointercancel', up);
@@ -145,6 +205,58 @@ function dragToDismiss(panel, handles, close) {
       window.addEventListener('pointercancel', up);
     }),
   );
+}
+
+// iOS sheet behavior: when the content is scrolled to the top, pulling down
+// moves the whole sheet instead of bouncing the list.
+function pullDown(panel, body, close) {
+  let y0 = 0;
+  let dy = 0;
+  let t0 = 0;
+  let armed = false;
+  let active = false;
+  body.addEventListener(
+    'touchstart',
+    (e) => {
+      armed = e.touches.length === 1 && body.scrollTop <= 0;
+      active = false;
+      dy = 0;
+      y0 = e.touches[0].clientY;
+      t0 = performance.now();
+    },
+    { passive: true },
+  );
+  body.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!armed) return;
+      const d = e.touches[0].clientY - y0;
+      if (!active) {
+        if (d < -3 || body.scrollTop > 0) {
+          armed = false;
+          return;
+        }
+        if (d < 8) return;
+        active = true;
+        y0 += 8;
+        panel.classList.add('dragging');
+      }
+      e.preventDefault();
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      panel.style.transform = `translateY(${dy}px)`;
+    },
+    { passive: false },
+  );
+  const end = () => {
+    armed = false;
+    if (!active) return;
+    active = false;
+    panel.classList.remove('dragging');
+    panel.style.transform = '';
+    if (shouldClose(dy, performance.now() - t0)) close();
+  };
+  body.addEventListener('touchend', end);
+  body.addEventListener('touchcancel', end);
 }
 
 // Centered or full-screen promo container.
@@ -212,6 +324,7 @@ export function segmented(options, value, onPick) {
   return wrap;
 }
 
+// Real switch: on iOS 18+ a tap on it plays the system haptic tick.
 export function switchEl(checked, onChange, label) {
   const input = h('input', { type: 'checkbox', class: HAS_SWITCH ? 'sw' : 'sw sw-custom', 'aria-label': label || '' });
   if (HAS_SWITCH) input.setAttribute('switch', '');

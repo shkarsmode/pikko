@@ -1,82 +1,76 @@
-// Inline SVG icons (original artwork). currentColor everywhere.
-const svg = (body, vb = '0 0 32 32') => `<svg viewBox="${vb}" aria-hidden="true" focusable="false">${body}</svg>`;
+// Inline SVG icons (original artwork), line style, currentColor.
+const svg = (body, vb = '0 0 24 24') => `<svg viewBox="${vb}" aria-hidden="true" focusable="false">${body}</svg>`;
+const S = 'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
 
 export const ICONS = {
   gear: svg(
-    '<path fill="currentColor" d="M13.6 3h4.8l.7 3.3a10 10 0 0 1 2.4 1.4l3.2-1.1 2.4 4.2-2.5 2.2a10 10 0 0 1 0 2.8l2.5 2.2-2.4 4.2-3.2-1.1a10 10 0 0 1-2.4 1.4l-.7 3.3h-4.8l-.7-3.3a10 10 0 0 1-2.4-1.4l-3.2 1.1-2.4-4.2 2.5-2.2a10 10 0 0 1 0-2.8L4.9 10.8l2.4-4.2 3.2 1.1a10 10 0 0 1 2.4-1.4zM16 11.2a4.8 4.8 0 1 0 0 9.6 4.8 4.8 0 0 0 0-9.6z"/>',
+    `<path ${S} d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path ${S} d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A7.6 7.6 0 0 0 7 6.5l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.4 1 2-3.4z"/>`,
   ),
-  chevron: svg('<path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M9 13l7 7 7-7"/>'),
-  close: svg('<path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" d="M9 9l14 14M23 9L9 23"/>'),
-  crown: svg('<path fill="currentColor" d="M4 10l6.2 5L16 6l5.8 9L28 10l-2.4 14H6.4zM6.6 26h18.8v2.4H6.6z"/>'),
-  lock: svg('<path fill="currentColor" d="M10 14v-3.5a6 6 0 0 1 12 0V14h1.5A2.5 2.5 0 0 1 26 16.5v9A2.5 2.5 0 0 1 23.5 28h-15A2.5 2.5 0 0 1 6 25.5v-9A2.5 2.5 0 0 1 8.5 14zm3 0h6v-3.5a3 3 0 0 0-6 0z"/>'),
-  check: svg('<path fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" d="M7 16.5l6 6L25 10"/>'),
-  share: svg(
-    '<path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M16 4v15M10.5 9.5L16 4l5.5 5.5M11 14H8.5A1.5 1.5 0 0 0 7 15.5v11A1.5 1.5 0 0 0 8.5 28h15a1.5 1.5 0 0 0 1.5-1.5v-11a1.5 1.5 0 0 0-1.5-1.5H21"/>',
-  ),
-  plusBox: svg(
-    '<rect x="5" y="5" width="22" height="22" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/><path stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M16 11v10M11 16h10"/>',
-  ),
-  phone: svg(
-    '<rect x="9" y="3" width="14" height="26" rx="3.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M14 25h4"/>',
-  ),
-  speaker: svg(
-    '<path fill="currentColor" d="M5 12.5A1.5 1.5 0 0 1 6.5 11H10l6-5.2c1-.8 2.5-.1 2.5 1.2v18c0 1.3-1.5 2-2.5 1.2L10 21H6.5A1.5 1.5 0 0 1 5 19.5z"/><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M22.5 11.5a6.5 6.5 0 0 1 0 9M25.8 8.2a11 11 0 0 1 0 15.6"/>',
-  ),
-  sparkle: svg('<path fill="currentColor" d="M16 2l2.6 9.4L28 14l-9.4 2.6L16 26l-2.6-9.4L4 14l9.4-2.6z"/>'),
-  heart: svg('<path fill="currentColor" d="M16 27S4 19.6 4 11.8A6.3 6.3 0 0 1 16 8.6a6.3 6.3 0 0 1 12 3.2C28 19.6 16 27 16 27z"/>'),
-  palette: svg(
-    '<path fill="currentColor" d="M16 3C8.8 3 3 8.6 3 15.5 3 22 8.6 27 14.5 27c1.6 0 2.5-1 2.5-2.3 0-1.3-1-1.8-1-3 0-1.4 1.1-2.4 2.6-2.4H22c3.9 0 7-2.8 7-6.6C29 7.4 23.2 3 16 3zm-7 13a2.2 2.2 0 1 1 0-4.4A2.2 2.2 0 0 1 9 16zm4-6a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4zm6 0a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4zm4.5 4.5a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4z"/>',
-  ),
-  tap: svg(
-    '<circle cx="16" cy="16" r="4" fill="currentColor"/><circle cx="16" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="2" opacity=".6"/><circle cx="16" cy="16" r="13.5" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".3"/>',
-  ),
+  chevron: svg(`<path ${S} d="M7 10l5 5 5-5"/>`),
+  close: svg(`<path ${S} d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>`),
+  check: svg(`<path ${S} stroke-width="2.2" d="M5 12.5l4.5 4.5L19 7.5"/>`),
+  lock: svg(`<rect ${S} x="5" y="10.5" width="14" height="10" rx="2"/><path ${S} d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>`),
+  key: svg(`<circle ${S} cx="8" cy="15" r="4"/><path ${S} d="M11 12l8-8M16 7l2 2M14 9l2 2"/>`),
+  share: svg(`<path ${S} d="M12 3.5v11M8 7.5l4-4 4 4M8.5 10.5H7a1.5 1.5 0 0 0-1.5 1.5v7A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5h-1.5"/>`),
+  plusBox: svg(`<rect ${S} x="4" y="4" width="16" height="16" rx="4"/><path ${S} d="M12 8.5v7M8.5 12h7"/>`),
+  phone: svg(`<rect ${S} x="7" y="2.5" width="10" height="19" rx="2.5"/><path ${S} d="M10.5 18.5h3"/>`),
+  speaker: svg(`<path ${S} d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path ${S} d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>`),
+  bolt: svg(`<path ${S} d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/>`),
+  grid: svg(`<path ${S} d="M4 4h16v16H4zM4 12h16M12 4v16"/>`),
+  palette: svg(`<circle ${S} cx="12" cy="12" r="8.5"/><circle cx="8.5" cy="10" r="1.3" fill="currentColor"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="10" r="1.3" fill="currentColor"/><path ${S} d="M12 20.5c-1.5 0-2-1-2-2s1-1.8 2.2-1.8h1.6"/>`),
+  heart: svg(`<path ${S} d="M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.7 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>`),
+  layers: svg(`<path ${S} d="M12 3.5l8.5 4.5-8.5 4.5L3.5 8z"/><path ${S} d="M3.5 12l8.5 4.5 8.5-4.5M3.5 16l8.5 4.5 8.5-4.5"/>`),
+  terminal: svg(`<rect ${S} x="3" y="4.5" width="18" height="15" rx="2.5"/><path ${S} d="M7 9.5l3 2.5-3 2.5M12.5 15h4.5"/>`),
 };
 
-// Mode glyphs: small scenes of "players" (dots).
+// Mode glyphs: little diagrams of targets and players.
 export const MODE_ICONS = {
   one: svg(
-    '<circle cx="6" cy="8" r="2.6" fill="currentColor" opacity=".4"/><circle cx="26.5" cy="9" r="2.6" fill="currentColor" opacity=".4"/><circle cx="24" cy="26" r="2.6" fill="currentColor" opacity=".4"/><circle cx="15" cy="17" r="5.2" fill="currentColor"/><circle cx="15" cy="17" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/>',
+    `<circle ${S} cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><path ${S} d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/>`,
   ),
   n: svg(
-    '<circle cx="9.5" cy="12" r="4" fill="currentColor"/><circle cx="9.5" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="22.5" cy="21" r="4" fill="currentColor"/><circle cx="22.5" cy="21" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="6" r="2.4" fill="currentColor" opacity=".4"/><circle cx="6" cy="26" r="2.4" fill="currentColor" opacity=".4"/>',
+    `<circle ${S} cx="8" cy="9" r="3.4"/><circle cx="8" cy="9" r="1.1" fill="currentColor"/><circle ${S} cx="16.5" cy="15.5" r="3.4"/><circle cx="16.5" cy="15.5" r="1.1" fill="currentColor"/><circle cx="18.5" cy="5" r="1.2" fill="currentColor" opacity=".45"/><circle cx="5" cy="19" r="1.2" fill="currentColor" opacity=".45"/>`,
   ),
   teams: svg(
-    '<circle cx="7" cy="10" r="3.6" fill="currentColor"/><circle cx="9" cy="22" r="3.6" fill="currentColor"/><path d="M7 10L9 22" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="10" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="23" cy="22" r="3.6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M25 13.6l-1.6 4.8" stroke="currentColor" stroke-width="2"/><path d="M16 4v24" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 3" opacity=".5"/>',
+    `<circle cx="5.5" cy="7.5" r="2.2" fill="currentColor"/><circle cx="6.5" cy="16.5" r="2.2" fill="currentColor"/><path ${S} d="M5.5 7.5l1 9"/><circle ${S} cx="18.5" cy="7.5" r="2.2"/><circle ${S} cx="17.5" cy="16.5" r="2.2"/><path ${S} d="M18.3 9.7l-.6 4.6"/><path ${S} stroke-dasharray="1.5 2.5" d="M12 3v18"/>`,
   ),
   order: svg(
-    '<circle cx="7" cy="23" r="5" fill="currentColor"/><text x="7" y="26.2" font-size="8.5" font-weight="800" text-anchor="middle" fill="#0b0914" font-family="system-ui,sans-serif">1</text><circle cx="16" cy="13" r="4.3" fill="none" stroke="currentColor" stroke-width="2"/><text x="16" y="16" font-size="7.5" font-weight="800" text-anchor="middle" fill="currentColor" font-family="system-ui,sans-serif">2</text><circle cx="26" cy="7" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".6"/><path d="M10.5 19.5l2.5-3M19.6 11l2.6-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 3"/>',
+    `<circle cx="5" cy="6" r="1.6" fill="currentColor"/><path ${S} d="M9 6h11"/><circle cx="5" cy="12" r="1.6" fill="currentColor" opacity=".7"/><path ${S} d="M9 12h8"/><circle cx="5" cy="18" r="1.6" fill="currentColor" opacity=".4"/><path ${S} d="M9 18h5"/>`,
   ),
   elim: svg(
-    '<circle cx="16" cy="16" r="5" fill="currentColor"/><circle cx="16" cy="16" r="8.6" fill="none" stroke="currentColor" stroke-width="2"/><g opacity=".55" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 4.5l4 4M7.5 4.5l-4 4M24.5 23.5l4 4M28.5 23.5l-4 4M24.5 4.5l4 4M28.5 4.5l-4 4"/></g>',
+    `<circle ${S} cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><path ${S} opacity=".6" d="M3 3.5l3 3M6 3.5l-3 3M18 17.5l3 3M21 17.5l-3 3M18 3.5l3 3M21 3.5l-3 3"/>`,
   ),
-  reaction: svg(
-    '<circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/><path fill="currentColor" d="M18.2 4.5L9 17.5h6l-1.6 10L23 14.4h-6.2z"/>',
-  ),
+  reaction: svg(`<circle ${S} opacity=".5" cx="12" cy="12" r="9"/><path ${S} d="M13 5.5L8 13h4l-1 5.5L16 11h-4z"/>`),
   markers: svg(
-    '<circle cx="6.5" cy="7" r="3" fill="currentColor"/><circle cx="16" cy="5.5" r="3" fill="currentColor" opacity=".7"/><circle cx="25.5" cy="8" r="3" fill="currentColor"/><circle cx="5.5" cy="17" r="3" fill="currentColor" opacity=".7"/><circle cx="26.5" cy="18" r="3" fill="currentColor" opacity=".7"/><circle cx="9" cy="26.5" r="3" fill="currentColor"/><circle cx="17" cy="27" r="3" fill="currentColor" opacity=".7"/><circle cx="25" cy="27" r="3" fill="currentColor"/><circle cx="16" cy="16.5" r="4.4" fill="none" stroke="currentColor" stroke-width="2"/>',
+    `<circle cx="5" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="4.5" r="1.5" fill="currentColor" opacity=".6"/><circle cx="19" cy="5.5" r="1.5" fill="currentColor"/><circle cx="4.5" cy="12" r="1.5" fill="currentColor" opacity=".6"/><circle cx="19.5" cy="12.5" r="1.5" fill="currentColor" opacity=".6"/><circle cx="6" cy="19" r="1.5" fill="currentColor"/><circle cx="12.5" cy="19.5" r="1.5" fill="currentColor" opacity=".6"/><circle cx="19" cy="19" r="1.5" fill="currentColor"/><circle ${S} cx="12" cy="12" r="3"/>`,
   ),
 };
 
-// Gift box used by promos (animated with CSS classes).
-export const GIFT = `<svg class="gift" viewBox="0 0 160 160" aria-hidden="true">
-  <defs>
-    <linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6d8f"/><stop offset="1" stop-color="#d9305f"/></linearGradient>
-    <linearGradient id="gLid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff93ad"/><stop offset="1" stop-color="#ff5a80"/></linearGradient>
-    <linearGradient id="gRib" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9a3"/><stop offset="1" stop-color="#ffb21f"/></linearGradient>
-    <radialGradient id="gIn" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff6c9" stop-opacity=".95"/><stop offset="1" stop-color="#ffd25e" stop-opacity="0"/></radialGradient>
-  </defs>
-  <ellipse class="gift-shadow" cx="80" cy="144" rx="46" ry="6" fill="#000" opacity=".35"/>
-  <circle class="gift-glow" cx="80" cy="70" r="46" fill="url(#gIn)"/>
-  <g class="gift-body">
-    <rect x="38" y="76" width="84" height="62" rx="10" fill="url(#gBody)"/>
-    <rect x="38" y="76" width="84" height="10" fill="#000" opacity=".12"/>
-    <rect x="73" y="76" width="14" height="62" fill="url(#gRib)"/>
-  </g>
-  <g class="gift-lid">
-    <rect x="30" y="60" width="100" height="22" rx="8" fill="url(#gLid)"/>
-    <rect x="73" y="60" width="14" height="22" fill="url(#gRib)"/>
-    <path d="M80 60c-10-20-34-22-31-8 2 8 18 9 31 8z" fill="url(#gRib)"/>
-    <path d="M80 60c10-20 34-22 31-8-2 8-18 9-31 8z" fill="url(#gRib)"/>
-    <circle cx="80" cy="59" r="6.5" fill="#ffcf4a"/>
-  </g>
+// Idle-screen target: spinning dashed orbit, a dial that sweeps like the
+// in-game countdown, lock-on brackets, a pulsing core and three "players".
+function dialTicks() {
+  let d = '';
+  for (let i = 0; i < 40; i++) {
+    const a = -Math.PI / 2 + (i / 40) * Math.PI * 2;
+    const r0 = 62;
+    const r1 = i % 10 === 0 ? 72 : 69;
+    d += `M${(100 + Math.cos(a) * r0).toFixed(1)} ${(100 + Math.sin(a) * r0).toFixed(1)}L${(100 + Math.cos(a) * r1).toFixed(1)} ${(100 + Math.sin(a) * r1).toFixed(1)}`;
+  }
+  return d;
+}
+const TICK_PATH = dialTicks();
+
+export const RETICLE = `<svg class="reticle" viewBox="0 0 200 200" aria-hidden="true">
+  <defs><mask id="pk-sweep"><circle class="rt-sweep" cx="100" cy="100" r="67" fill="none" stroke="#fff" stroke-width="16" pathLength="100" transform="rotate(-90 100 100)"/></mask></defs>
+  <g class="rt-spin"><circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-opacity=".22" stroke-width="1.2" stroke-dasharray="1.5 5"/></g>
+  <path d="${TICK_PATH}" stroke="currentColor" stroke-opacity=".22" stroke-width="1.6"/>
+  <path d="${TICK_PATH}" stroke="var(--acc)" stroke-width="1.8" mask="url(#pk-sweep)"/>
+  <circle cx="100" cy="100" r="50" fill="none" stroke="currentColor" stroke-opacity=".55" stroke-width="1.6"/>
+  <path class="rt-br" d="M36 56V36h20M144 36h20v20M164 144v20h-20M56 164H36v-20" fill="none" stroke="currentColor" stroke-opacity=".8" stroke-width="2" stroke-linecap="square"/>
+  <circle class="rt-core" cx="100" cy="100" r="17" fill="var(--acc)"/>
+  <circle cx="100" cy="100" r="4" fill="#07080b"/>
+  <g class="rt-orbit"><circle cx="100" cy="8" r="3.6" fill="#4dd7ff"/><circle cx="179.7" cy="146" r="3.6" fill="#ffb547"/><circle cx="20.3" cy="146" r="3.6" fill="#ff5c7a"/></g>
 </svg>`;
+
+// Big reticle used as paywall artwork.
+export const HERO = RETICLE.replace('class="reticle"', 'class="reticle hero"').replace('id="pk-sweep"', 'id="pk-sweep2"').replace('url(#pk-sweep)', 'url(#pk-sweep2)');

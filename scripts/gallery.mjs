@@ -40,14 +40,14 @@ function html(items) {
     .join('');
   return `<!doctype html><html><head><style>
   html,body{margin:0;width:1840px;height:880px;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif}
-  body{background:radial-gradient(70% 90% at 15% 0%,#3b2391 0%,rgba(59,35,145,0) 60%),radial-gradient(60% 80% at 100% 100%,rgba(255,77,109,.28),rgba(255,77,109,0) 60%),#0b0914;
+  body{background:radial-gradient(60% 70% at 50% 0%,rgba(61,255,154,.12),rgba(61,255,154,0) 70%),radial-gradient(circle at 1px 1px,rgba(255,255,255,.07) 1px,transparent 1.4px) 0 0/24px 24px,#07080b;
     display:flex;align-items:center;justify-content:center;gap:40px}
   figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:22px}
-  .phone{position:relative;width:300px;height:650px;padding:10px;border-radius:54px;background:linear-gradient(160deg,#3a3352,#17132a);
+  .phone{position:relative;width:300px;height:650px;padding:10px;border-radius:54px;background:linear-gradient(160deg,#2a2e37,#121419);
     box-shadow:0 40px 80px rgba(0,0,0,.55),inset 0 0 0 2px rgba(255,255,255,.08)}
   .phone img{display:block;width:300px;height:650px;border-radius:44px;object-fit:cover}
   .island{position:absolute;left:50%;top:22px;width:92px;height:27px;margin-left:-46px;border-radius:14px;background:#000}
-  figcaption{color:rgba(255,255,255,.82);font-size:22px;font-weight:600;letter-spacing:.01em}
+  figcaption{color:#99a0ac;font:500 20px Consolas,'Cascadia Code',monospace;letter-spacing:.02em}
   </style></head><body>${phones}</body></html>`;
 }
 

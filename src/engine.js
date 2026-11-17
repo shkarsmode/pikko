@@ -1,6 +1,6 @@
-// Game engine: turns fingers (or tap markers) into orbs, waits for a still
+// Game engine: turns fingers (or tap markers) into targets, waits for a still
 // moment, then plays the reveal of the active mode. Rendering is Canvas 2D,
-// time-based (works the same at 60 and 120 Hz), and the loop sleeps when idle.
+// time-based (identical at 60 and 120 Hz), and the loop sleeps when idle.
 import { sfx } from './audio.js';
 import { haptic } from './haptics.js';
 import { t } from './i18n.js';
@@ -15,7 +15,7 @@ const easeInOutCubic = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2
 const easeOutBack = (k) => 1 + 2.70158 * Math.pow(k - 1, 3) + 1.70158 * Math.pow(k - 1, 2);
 const now = () => performance.now() / 1000;
 
-export const FONT = 'ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+export const MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace';
 
 export function rnd(n) {
   if (n <= 1) return 0;
@@ -39,16 +39,16 @@ export function shuffle(arr) {
 
 export const PALETTES = {
   neon: {
-    colors: ['#FF4D6D', '#FFB020', '#2EE59D', '#38BDF8', '#9B7BFF', '#FF7A33', '#F15BB5', '#B7F34E', '#FFE14D', '#22D3C5', '#FF8FAB', '#7DD3FC'],
-    teams: ['#FF4D6D', '#38BDF8', '#B7F34E', '#FFB020'],
+    colors: ['#3DFF9A', '#4DD7FF', '#FFB547', '#FF5C7A', '#A78BFA', '#F5F75C', '#FF7AE6', '#5C8DFF', '#FF8A4C', '#7CFFE5', '#C6FF4D', '#FF9EC4'],
+    teams: ['#3DFF9A', '#FF5C7A', '#4DD7FF', '#FFB547'],
   },
-  pastel: {
-    colors: ['#FFADAD', '#FFD6A5', '#FDFFB6', '#CAFFBF', '#9BF6FF', '#A0C4FF', '#BDB2FF', '#FFC6FF', '#FFB5E8', '#B5EAD7', '#E2F0CB', '#C7CEEA'],
-    teams: ['#FFADAD', '#9BF6FF', '#CAFFBF', '#BDB2FF'],
+  phosphor: {
+    colors: ['#3DFF9A', '#B4FFD8', '#1FB86A', '#7DFFBE', '#2BD67E', '#C8FFE4', '#5CE6A0', '#18A05C', '#9DFFC9', '#33FF77', '#6CFFB0', '#A8FFD0'],
+    teams: ['#3DFF9A', '#C8FFE4', '#18A05C', '#7DFFBE'],
   },
-  sunset: {
-    colors: ['#FF5E5B', '#FF9F1C', '#FFD23F', '#FF4F9A', '#C04CFD', '#FF7B54', '#F72585', '#FFB4A2', '#E76F51', '#FCA311', '#B5179E', '#FF8C42'],
-    teams: ['#FF5E5B', '#C04CFD', '#FFD23F', '#22D3C5'],
+  amber: {
+    colors: ['#FFB547', '#FFE2A8', '#E08A1E', '#FFCF7A', '#FF9A1F', '#FFEBC4', '#CC7A14', '#FFC060', '#FFD99A', '#FFA733', '#FFB000', '#FFD27F'],
+    teams: ['#FFB547', '#FFEBC4', '#CC7A14', '#FFCF7A'],
   },
 };
 
@@ -69,6 +69,7 @@ const MK_HOLD = 1.1; // countdown after pressing Pick in marker mode
 export const MAX_MARKERS = 24;
 const MAX_ORBS = 12;
 const LETTERS = ['A', 'B', 'C', 'D'];
+const TICKS = 40;
 
 const hex2rgb = (h) => {
   const n = parseInt(h.slice(1), 16);
@@ -78,8 +79,9 @@ const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[
 const css = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 const luma = (c) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
 const WHITE = [255, 255, 255];
-const INK = [11, 9, 20];
-const RED = [255, 69, 58];
+const INK = [7, 8, 11];
+const RED = [255, 77, 94];
+const FLASH = [220, 255, 236];
 export const rgbHex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
 
 // Soft glow sprites, cached per (quantized) color.
@@ -90,14 +92,14 @@ function glow(c) {
   let cv = glowCache.get(key);
   if (cv) return cv;
   if (glowCache.size > 400) glowCache.clear();
-  const S = 192;
+  const S = 160;
   cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const g = cv.getContext('2d');
   const gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-  gr.addColorStop(0, css(c, 0.85));
-  gr.addColorStop(0.22, css(c, 0.42));
-  gr.addColorStop(0.5, css(c, 0.12));
+  gr.addColorStop(0, css(c, 0.5));
+  gr.addColorStop(0.3, css(c, 0.2));
+  gr.addColorStop(0.65, css(c, 0.05));
   gr.addColorStop(1, css(c, 0));
   g.fillStyle = gr;
   g.fillRect(0, 0, S, S);
@@ -105,8 +107,24 @@ function glow(c) {
   return cv;
 }
 
+// Dot grid laid over the winner flood (gives the flat color some texture).
+let dotTile = null;
+function dots(ctx) {
+  if (!dotTile) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 22;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(0,0,0,0.22)';
+    g.beginPath();
+    g.arc(11, 11, 1.25, 0, TAU);
+    g.fill();
+    dotTile = c;
+  }
+  return ctx.createPattern(dotTile, 'repeat');
+}
+
 class Spring {
-  constructor(x = 0, k = 260, c = 17) {
+  constructor(x = 0, k = 260, c = 19) {
     this.x = x;
     this.v = 0;
     this.t = x;
@@ -161,7 +179,7 @@ class Orb {
     this.id = id;
     this.x = x;
     this.y = y;
-    this.idx = idx;
+    this.idx = idx; // shown as P1, P2...
     this.base = rgb;
     this.c0 = rgb;
     this.c1 = rgb;
@@ -169,15 +187,16 @@ class Orb {
     this.cDur = 0;
     this.s = new Spring(0);
     this.s.t = 1;
-    this.ex = new Tween(1); // exit multiplier
+    this.ex = new Tween(1);
     this.alpha = new Tween(1);
-    this.white = new Tween(0);
+    this.white = new Tween(0); // selected without a flood
+    this.ink = new Tween(0); // drawn in black on the winner flood
     this.gray = new Tween(0);
+    this.lock = new Tween(0); // brackets close in
     this.exiting = false;
     this.dead = false;
     this.down = true;
     this.phase = Math.random() * TAU;
-    this.spin = Math.random() * TAU;
     this.hl = 0;
     this.kick = 0;
     this.role = '';
@@ -188,6 +207,9 @@ class Orb {
     this.rank = -1;
     this.false = false;
     this.born = tm;
+  }
+  get tag() {
+    return `P${this.idx}`;
   }
   color(tm) {
     if (!this.cDur) return this.c1;
@@ -217,8 +239,6 @@ class Round {
     this.sonars = [];
     this.flash = null;
     this.groups = null;
-    this.path = null;
-    this.pathAt = 0;
     this.spots = [];
     this.dim = new Tween(0);
     this.presence = new Tween(0);
@@ -231,9 +251,16 @@ class Round {
     this.markers = null;
     this.goAt = 0;
     this.colorBag = [];
+    this.lastStatus = 0;
   }
   live() {
     return this.orbs.filter((o) => !o.exiting);
+  }
+  freeIdx() {
+    const used = new Set(this.live().map((o) => o.idx));
+    let i = 1;
+    while (used.has(i)) i++;
+    return i;
   }
   at(tm, fn) {
     const ev = { t: tm, fn };
@@ -247,6 +274,8 @@ class Round {
     if (i >= 0) this.tl.splice(i, 1);
   }
 }
+
+const badge = (o) => ({ id: o.tag, color: rgbHex(o.base) });
 
 export class Engine {
   constructor(canvas, hooks) {
@@ -312,7 +341,6 @@ export class Engine {
   }
 
   busy() {
-    // true while a round is on screen and should not be interrupted
     const r = this.round;
     if (!r) return false;
     if (this.input === 'marker') return r.phase === 'reveal' || r.armedAt > 0;
@@ -358,13 +386,13 @@ export class Engine {
       this.emit();
       return;
     }
-    const o = new Orb(id, x, y, this.nextColor(r), tm, r.orbs.length);
+    const o = new Orb(id, x, y, this.nextColor(r), tm, r.freeIdx());
     r.orbs.push(o);
     this.touch.set(id, o);
     r.lastChange = tm;
     r.ticks = 0;
-    this.ripple(r, x, y, o.base, tm, 0.55, 1.9);
-    sfx.down(r.live().length - 1);
+    this.ripple(r, x, y, o.base, tm, 0.5, 2.1, 1.5);
+    sfx.down(o.idx - 1);
     haptic('light');
     this.emit();
     this.kick();
@@ -448,11 +476,11 @@ export class Engine {
       this.hooks.toast(t('toast.mkMax', MAX_MARKERS));
       return;
     }
-    const o = new Orb('m' + this.seq++, x, y, this.nextColor(r), tm, r.orbs.length);
+    const o = new Orb('m' + this.seq++, x, y, this.nextColor(r), tm, r.freeIdx());
     o.down = false;
     r.orbs.push(o);
-    this.ripple(r, x, y, o.base, tm, 0.5, 1.7);
-    sfx.down(r.live().length - 1);
+    this.ripple(r, x, y, o.base, tm, 0.5, 1.9, 1.5);
+    sfx.down(o.idx - 1);
     haptic('light');
     this.emit();
     this.kick();
@@ -476,8 +504,8 @@ export class Engine {
     this.retire(tm, 0.25);
     const n = (this.round = new Round(tm));
     n.presence.set(1);
-    marks.forEach((m, i) => {
-      const o = new Orb('m' + this.seq++, m.x, m.y, m.c, tm, i);
+    marks.forEach((m) => {
+      const o = new Orb('m' + this.seq++, m.x, m.y, m.c, tm, m.idx);
       o.down = false;
       o.s.x = 0.2;
       n.orbs.push(o);
@@ -495,7 +523,8 @@ export class Engine {
 
   mR() {
     const n = this.round ? this.round.live().length : 0;
-    return this.input === 'marker' && n > 8 ? this.R * 0.78 : this.R;
+    if (this.input !== 'marker') return this.R;
+    return n > 10 ? this.R * 0.7 : n > 5 ? this.R * 0.84 : this.R;
   }
 
   // ---------- round flow ----------
@@ -517,6 +546,7 @@ export class Engine {
     this.round = null;
     this.hooks.caption(null);
     this.hooks.big(null);
+    this.hooks.status && this.hooks.status(null);
     this.kick();
   }
 
@@ -524,9 +554,11 @@ export class Engine {
     const r = this.round;
     r.phase = 'reveal';
     r.progress = 1;
-    r.markers = r.live().map((o) => ({ x: o.x, y: o.y, c: o.base }));
+    r.markers = r.live().map((o) => ({ x: o.x, y: o.y, c: o.base, idx: o.idx }));
+    this.hooks.status && this.hooks.status(null);
     haptic('medium');
     const live = r.live();
+    live.forEach((o) => o.lock.to(1, tm, 0.25));
     switch (this.modeId) {
       case 'n':
         this.revealN(r, live, tm);
@@ -550,25 +582,27 @@ export class Engine {
   }
 
   toResult(r, tm, cap) {
-    r.at(tm, (t0) => {
+    r.at(tm, () => {
       if (this.round !== r) return;
       r.phase = 'result';
       r.lingerAt = 0;
       this.hooks.caption(cap);
       this.emit();
       this.hooks.roundDone(this.modeId);
-      void t0;
     });
   }
 
   crown(r, o, tm, flood = true) {
     o.role = 'winner';
-    o.s.t = 1.3;
-    o.white.to(1, tm, 0.45);
+    o.s.t = 1.22;
     o.gray.to(0, tm, 0.2);
-    if (flood) r.flood = { x: o.x, y: o.y, c: o.base, at: tm, dur: 0.72, vig: null };
-    this.confetti(r, o.x, o.y, 64, tm);
-    r.sonars.push({ o, every: 1.2, next: tm + 0.1 });
+    o.lock.to(1, tm, 0.2);
+    if (flood) {
+      r.flood = { x: o.x, y: o.y, c: o.base, at: tm, dur: 0.62, vig: null };
+      o.ink.to(1, tm + 0.12, 0.3);
+    } else o.white.to(1, tm, 0.35);
+    this.bits(r, o.x, o.y, 54, tm, flood ? [INK, INK, WHITE] : null);
+    r.sonars.push({ o, every: 1.25, next: tm + 0.12 });
     sfx.win();
     haptic('success');
   }
@@ -576,11 +610,11 @@ export class Engine {
   revealOne(r, live, tm) {
     const win = live[rnd(live.length)];
     sfx.charge();
-    live.forEach((o) => (o.s.t = 0.82));
+    live.forEach((o) => (o.s.t = 0.84));
     r.at(tm + 0.22, (t0) => {
       this.crown(r, win, t0);
-      live.forEach((o, i) => o !== win && this.exitOrb(r, o, t0 + i * 0.035, 0.3));
-      this.toResult(r, t0 + 0.6, { text: t(`cap.win${1 + rnd(4)}`) });
+      live.forEach((o, i) => o !== win && this.exitOrb(r, o, t0 + i * 0.03, 0.28));
+      this.toResult(r, t0 + 0.55, { ...badge(win), text: t(`cap.win${1 + rnd(4)}`) });
     });
   }
 
@@ -589,17 +623,17 @@ export class Engine {
     const wins = shuffle(live.slice()).slice(0, k);
     const step = 0.24 * this.speed().k;
     sfx.charge();
-    live.forEach((o) => (o.s.t = 0.84));
-    r.dim.to(0.7, tm + 0.15, 0.6);
+    live.forEach((o) => (o.s.t = 0.86));
+    r.dim.to(0.72, tm + 0.15, 0.6);
     wins.forEach((o, i) =>
       r.at(tm + 0.25 + i * step, (t0) => {
         o.role = 'winner';
-        o.s.t = 1.22;
-        o.white.to(0.9, t0, 0.4);
+        o.s.t = 1.18;
+        o.white.to(1, t0, 0.35);
         o.hl = 1;
         r.spots.push(o);
-        this.ripple(r, o.x, o.y, WHITE, t0, 1, 3.2, 0.7);
-        this.confetti(r, o.x, o.y, 22, t0);
+        this.ripple(r, o.x, o.y, WHITE, t0, 0.9, 3.2, 1.5);
+        this.bits(r, o.x, o.y, 20, t0);
         sfx.pick(i);
         haptic('medium');
       }),
@@ -611,7 +645,7 @@ export class Engine {
       sfx.win();
       haptic('success');
     });
-    this.toResult(r, tEnd + 0.35, { text: t('cap.winners', k) });
+    this.toResult(r, tEnd + 0.35, { badges: wins.sort((a, b) => a.idx - b.idx).map(badge), text: t('cap.winners', k) });
   }
 
   revealTeams(r, live, tm) {
@@ -624,18 +658,18 @@ export class Engine {
     });
     const step = 0.38 * this.speed().k;
     sfx.charge();
-    live.forEach((o) => (o.s.t = 0.86));
+    live.forEach((o) => (o.s.t = 0.88));
     groups.forEach((members, ti) =>
       r.at(tm + 0.25 + ti * step, (t0) => {
         members.forEach((o, j) => {
           const at = t0 + j * 0.05;
-          o.setColor(cols[ti], at, 0.34);
+          o.setColor(cols[ti], at, 0.3);
           o.base = cols[ti];
           o.label = LETTERS[ti];
           o.labelAt = at;
-          o.s.t = 1.06;
+          o.s.t = 1.04;
           o.hl = 1;
-          this.ripple(r, o.x, o.y, cols[ti], at, 0.9, 2.4);
+          this.ripple(r, o.x, o.y, cols[ti], at, 0.8, 2.4, 1.5);
         });
         sfx.team(ti);
         haptic('medium');
@@ -647,8 +681,7 @@ export class Engine {
       haptic('success');
     });
     this.toResult(r, tEnd + 0.2, {
-      text: '',
-      chips: groups.map((m, ti) => ({ color: rgbHex(cols[ti]), text: `${t('team', LETTERS[ti])} · ${m.length}` })),
+      chips: groups.map((m, ti) => ({ color: rgbHex(cols[ti]), text: `${LETTERS[ti]} · ${m.map((o) => o.tag).join(' ')}` })),
     });
   }
 
@@ -656,15 +689,15 @@ export class Engine {
     const order = shuffle(live.slice());
     const step = 0.42 * this.speed().k;
     sfx.charge();
-    live.forEach((o) => (o.s.t = 0.86));
+    live.forEach((o) => (o.s.t = 0.88));
     order.forEach((o, i) =>
       r.at(tm + 0.3 + i * step, (t0) => {
         o.rank = i;
         o.label = String(i + 1);
         o.labelAt = t0;
-        o.s.t = i === 0 ? 1.16 : 1;
+        o.s.t = i === 0 ? 1.14 : 1;
         o.hl = 1;
-        this.ripple(r, o.x, o.y, o.base, t0, 0.9, 2.3);
+        this.ripple(r, o.x, o.y, o.base, t0, 0.8, 2.3, 1.5);
         sfx.order(i);
         haptic(i === 0 ? 'medium' : 'light');
       }),
@@ -672,25 +705,25 @@ export class Engine {
     const tEnd = tm + 0.3 + order.length * step;
     r.at(tEnd, (t0) => {
       const first = order[0];
-      first.white.to(0.35, t0, 0.4);
+      first.white.to(1, t0, 0.35);
       r.sonars.push({ o: first, every: 1.3, next: t0 });
       sfx.win();
       haptic('success');
     });
-    this.toResult(r, tEnd + 0.1, { text: t('cap.order') });
+    this.toResult(r, tEnd + 0.1, { text: t('cap.order'), line: order.map((o) => o.tag).join(' → ') });
   }
 
   revealElim(r, live, tm) {
     const sp = this.speed().k;
     sfx.charge();
-    live.forEach((o) => (o.s.t = 0.9));
+    live.forEach((o) => (o.s.t = 0.92));
     const step = (t0) => {
       const rem = r.live();
       if (rem.length <= 1) {
         const w = rem[0];
         if (w) {
           r.at(t0, (t1) => this.crown(r, w, t1));
-          this.toResult(r, t0 + 0.6, { text: t('cap.last') });
+          this.toResult(r, t0 + 0.6, { ...badge(w), text: t('cap.last') });
         }
         return;
       }
@@ -715,8 +748,8 @@ export class Engine {
       const tKill = tt + 0.3 * sp;
       r.at(tKill, (t1) => {
         victim.role = 'out';
-        this.shards(r, victim.x, victim.y, victim.base, t1);
-        this.exitOrb(r, victim, t1, 0.18);
+        this.bits(r, victim.x, victim.y, 22, t1, [victim.base, victim.base, WHITE], 0.75);
+        this.exitOrb(r, victim, t1, 0.2);
         r.live().forEach((o) => (o.kick = t1));
         sfx.pop();
         haptic('heavy');
@@ -739,12 +772,12 @@ export class Engine {
     r.goEv = r.at(tm + delay, (t0) => {
       r.sub = 'go';
       r.goAt = t0;
-      r.flash = { at: t0, dur: 0.5 };
+      r.flash = { at: t0, dur: 0.35 };
       r.live()
         .filter((o) => !o.false)
         .forEach((o) => {
-          o.gray.to(0, t0, 0.12);
-          o.s.t = 1.12;
+          o.gray.to(0, t0, 0.1);
+          o.s.t = 1.1;
           o.hl = 1;
         });
       r.dim.to(0, t0, 0.25);
@@ -759,11 +792,11 @@ export class Engine {
     if (o.false || o.exiting) return;
     if (r.sub === 'ready') {
       o.false = true;
-      o.setColor(RED, tm, 0.18);
+      o.setColor(RED, tm, 0.15);
       o.gray.to(0, tm, 0.1);
-      o.label = '✕';
+      o.label = '×';
       o.labelAt = tm;
-      o.s.t = 0.74;
+      o.s.t = 0.78;
       o.kick = tm;
       sfx.buzz();
       haptic('warn');
@@ -775,12 +808,12 @@ export class Engine {
         r.dim.to(0, tm, 0.3);
         if (ok.length === 1) {
           r.at(tm + 0.35, (t0) => this.crown(r, ok[0], t0));
-          this.toResult(r, tm + 0.9, { text: t('cap.solo') });
+          this.toResult(r, tm + 0.9, { ...badge(ok[0]), text: t('cap.solo') });
         } else {
           this.toResult(r, tm + 0.4, { text: t('cap.allFalse') });
         }
       } else {
-        this.hooks.big({ text: t('cap.ready'), sub: t('cap.false'), kind: 'ready', shake: true });
+        this.hooks.big({ text: t('cap.ready'), sub: `${o.tag} · ${t('cap.false')}`, kind: 'ready', shake: true });
       }
     } else if (r.sub === 'go') {
       r.sub = 'done';
@@ -789,7 +822,7 @@ export class Engine {
       o.sub = t('cap.ms', ms);
       this.crown(r, o, tm);
       r.live().forEach((x, i) => x !== o && this.exitOrb(r, x, tm + 0.1 + i * 0.04, 0.3));
-      this.toResult(r, tm + 0.6, { text: `${t('cap.fast')} ${t('cap.ms', ms)}` });
+      this.toResult(r, tm + 0.6, { ...badge(o), text: `${t('cap.fast')} · ${t('cap.ms', ms)}` });
     }
   }
 
@@ -801,53 +834,26 @@ export class Engine {
     o.alpha.to(0, at, dur, easeInCubic);
   }
 
-  ripple(r, x, y, c, at, a = 0.6, scale = 2, w = 3) {
-    r.rings.push({ x, y, c, at, dur: 0.65, r0: this.R * 0.7, r1: this.R * scale, a, w });
+  ripple(r, x, y, c, at, a = 0.6, scale = 2, w = 1.5) {
+    r.rings.push({ x, y, c, at, dur: 0.6, r0: this.R * 0.8, r1: this.R * scale, a, w });
   }
 
-  confetti(r, x, y, n, at) {
-    const cols = this.palette().colors.map(hex2rgb).concat([WHITE, WHITE]);
+  // square "pixels" bursting out
+  bits(r, x, y, n, at, colors = null, speed = 1) {
+    const cols = colors || this.palette().colors.map(hex2rgb).concat([WHITE, WHITE]);
     for (let i = 0; i < n; i++) {
       const ang = Math.random() * TAU;
-      const sp = 260 + Math.random() * 720;
+      const sp = (180 + Math.random() * 620) * speed;
+      const s = 2.5 + Math.random() * 4.5;
       r.parts.push({
-        kind: 'c',
-        x,
-        y,
-        vx: Math.cos(ang) * sp,
-        vy: Math.sin(ang) * sp - 220,
-        rot: Math.random() * TAU,
-        vr: (Math.random() - 0.5) * 14,
-        flip: Math.random() * TAU,
-        vf: 6 + Math.random() * 10,
-        w: 5 + Math.random() * 5,
-        h: 8 + Math.random() * 7,
-        c: cols[rnd(cols.length)],
-        at,
-        life: 1.4 + Math.random() * 1.1,
-      });
-    }
-  }
-
-  shards(r, x, y, c, at) {
-    for (let i = 0; i < 16; i++) {
-      const ang = (i / 16) * TAU + Math.random() * 0.4;
-      const sp = 180 + Math.random() * 420;
-      r.parts.push({
-        kind: 's',
-        x: x + Math.cos(ang) * this.R * 0.4,
-        y: y + Math.sin(ang) * this.R * 0.4,
+        x: x + Math.cos(ang) * this.R * 0.5,
+        y: y + Math.sin(ang) * this.R * 0.5,
         vx: Math.cos(ang) * sp,
         vy: Math.sin(ang) * sp,
-        rot: Math.random() * TAU,
-        vr: (Math.random() - 0.5) * 18,
-        flip: 0,
-        vf: 0,
-        w: 7 + Math.random() * 9,
-        h: 7 + Math.random() * 9,
-        c: mix(c, WHITE, Math.random() * 0.3),
+        s,
+        c: cols[rnd(cols.length)],
         at,
-        life: 0.6 + Math.random() * 0.4,
+        life: 0.7 + Math.random() * 0.9,
       });
     }
   }
@@ -898,11 +904,14 @@ export class Engine {
       const min = this.minPlayers();
       let p = 0;
       let dur = 1;
+      let counting = false;
       if (this.input === 'hold') {
         dur = this.speed().hold;
-        if (live >= min) p = clamp((tm - r.lastChange - SETTLE) / dur, 0, 1);
+        counting = live >= min;
+        if (counting) p = clamp((tm - r.lastChange - SETTLE) / dur, 0, 1);
       } else if (r.armedAt) {
         dur = MK_HOLD;
+        counting = true;
         p = clamp((tm - r.armedAt) / dur, 0, 1);
       }
       if (p > 0) {
@@ -914,6 +923,10 @@ export class Engine {
         }
       }
       r.progress = p;
+      if (this.hooks.status && live && tm - r.lastStatus > 0.05) {
+        r.lastStatus = tm;
+        this.hooks.status({ live, min, counting, left: counting ? Math.max(0, dur * (1 - p)) : 0, marker: this.input === 'marker' });
+      }
       if (p >= 1) this.beginReveal(tm);
       const waiting = this.input === 'hold' && live > 0 && live < min && tm - r.lastChange > 0.7;
       if (waiting !== r.waiting) {
@@ -936,10 +949,8 @@ export class Engine {
   }
 
   step(r, tm, dt) {
-    const prog = r.phase === 'gather' ? r.progress : 0;
     for (const o of r.orbs) {
       o.s.step(dt);
-      o.spin += dt * (1.1 + 7 * prog * prog) * (o.role === 'winner' ? 0.55 : 1);
       if (o.hl > 0) o.hl = Math.max(0, o.hl - dt * 3);
       if (o.exiting && o.ex.done(tm) && tm > o.ex.t0) o.dead = true;
     }
@@ -947,21 +958,19 @@ export class Engine {
     for (const s of r.sonars) {
       if (tm >= s.next && !s.o.exiting) {
         s.next = tm + s.every;
-        this.ripple(r, s.o.x, s.o.y, WHITE, tm, 0.55, 4.2, 2.5);
-        r.rings[r.rings.length - 1].dur = 1.5;
+        const ink = s.o.ink.val(tm) > 0.5;
+        this.ripple(r, s.o.x, s.o.y, ink ? INK : WHITE, tm, ink ? 0.5 : 0.45, 4.4, 1.25);
+        r.rings[r.rings.length - 1].dur = 1.6;
       }
     }
     r.rings = r.rings.filter((g) => tm < g.at + g.dur);
-    const g = 1300;
     for (const p of r.parts) {
       if (tm < p.at) continue;
-      const drag = Math.exp(-(p.kind === 'c' ? 2.6 : 3.4) * dt);
+      const drag = Math.exp(-3.2 * dt);
       p.vx *= drag;
-      p.vy = p.vy * drag + g * dt * (p.kind === 'c' ? 0.55 : 0.9);
+      p.vy = p.vy * drag + 420 * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.rot += p.vr * dt;
-      p.flip += p.vf * dt;
     }
     r.parts = r.parts.filter((p) => tm < p.at + p.life);
   }
@@ -981,222 +990,266 @@ export class Engine {
     const { ctx, w, h } = this;
     const R0 = this.mR();
 
-    // darken the backdrop a little while fingers are down
+    // dim the backdrop a little while fingers are down
     const pres = r.presence.val(tm);
     if (pres > 0) {
-      ctx.globalAlpha = A * pres * 0.32;
-      ctx.fillStyle = '#05040b';
+      ctx.globalAlpha = A * pres * 0.35;
+      ctx.fillStyle = '#030405';
       ctx.fillRect(0, 0, w, h);
     }
 
-    // colored light pools under every orb
+    // light pools under every target
     for (const o of r.orbs) {
       const s = o.s.x * o.ex.val(tm);
       if (s < 0.03) continue;
       const size = R0 * 6 * s;
-      ctx.globalAlpha = A * 0.22 * o.alpha.val(tm) * (1 - o.gray.val(tm) * 0.7);
+      ctx.globalAlpha = A * 0.32 * o.alpha.val(tm) * (1 - o.gray.val(tm) * 0.7) * (1 - o.ink.val(tm));
       ctx.drawImage(glow(o.color(tm)), o.x - size / 2, o.y - size / 2, size, size);
     }
 
-    // winner flood
+    // winner flood: flat color, dot grid, soft edge shade
     const f = r.flood;
     if (f) {
       const k = clamp((tm - f.at) / f.dur, 0, 1);
       if (k > 0) {
         const maxR = Math.max(Math.hypot(f.x, f.y), Math.hypot(w - f.x, f.y), Math.hypot(f.x, h - f.y), Math.hypot(w - f.x, h - f.y)) + 4;
         const e = easeOutCubic(k);
+        ctx.save();
+        ctx.beginPath();
+        if (k >= 1) ctx.rect(0, 0, w, h);
+        else ctx.arc(f.x, f.y, maxR * e, 0, TAU);
+        ctx.clip();
         ctx.globalAlpha = A;
-        ctx.fillStyle = css(mix(f.c, INK, 0.08));
-        if (k >= 1) ctx.fillRect(0, 0, w, h);
-        else {
-          ctx.beginPath();
-          ctx.arc(f.x, f.y, maxR * e, 0, TAU);
-          ctx.fill();
-        }
+        ctx.fillStyle = css(f.c);
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = dots(ctx);
+        ctx.fillRect(0, 0, w, h);
         if (!f.vig || f.vigW !== w || f.vigH !== h) {
-          f.vig = ctx.createRadialGradient(f.x, f.y, R0 * 1.4, f.x, f.y, maxR);
-          f.vig.addColorStop(0, 'rgba(8,6,16,0)');
-          f.vig.addColorStop(0.55, 'rgba(8,6,16,0.16)');
-          f.vig.addColorStop(1, 'rgba(8,6,16,0.5)');
+          f.vig = ctx.createRadialGradient(f.x, f.y, R0 * 1.6, f.x, f.y, maxR);
+          f.vig.addColorStop(0, 'rgba(0,0,0,0)');
+          f.vig.addColorStop(1, 'rgba(0,0,0,0.32)');
           f.vigW = w;
           f.vigH = h;
         }
-        ctx.globalAlpha = A * e;
         ctx.fillStyle = f.vig;
         ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+        // the expanding edge
+        if (k < 1) {
+          ctx.globalAlpha = A * (1 - k);
+          ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, maxR * e, 0, TAU);
+          ctx.stroke();
+        }
       }
     }
 
-    // dim layer (pick several, reflex)
+    // dim layer (several, reflex)
     const d = r.dim.val(tm);
     if (d > 0.002) {
       ctx.globalAlpha = A * d;
-      ctx.fillStyle = '#06050c';
+      ctx.fillStyle = '#030405';
       ctx.fillRect(0, 0, w, h);
     }
     for (const o of r.spots) {
       const s = o.s.x * o.ex.val(tm);
-      const size = R0 * 9 * s;
-      ctx.globalAlpha = A * 0.5;
+      const size = R0 * 8 * s;
+      ctx.globalAlpha = A * 0.55;
       ctx.drawImage(glow(o.base), o.x - size / 2, o.y - size / 2, size, size);
     }
 
     if (r.groups) this.drawGroups(r, tm, A, R0);
 
-    // rings
     for (const g of r.rings) {
       const k = (tm - g.at) / g.dur;
       if (k < 0) continue;
       const e = easeOutCubic(k);
-      ctx.globalAlpha = A * g.a * Math.pow(1 - k, 1.6);
+      ctx.globalAlpha = A * g.a * Math.pow(1 - k, 1.4);
       ctx.strokeStyle = css(g.c);
-      ctx.lineWidth = g.w * (1 - k * 0.6);
+      ctx.lineWidth = g.w;
       ctx.beginPath();
       ctx.arc(g.x, g.y, lerp(g.r0, g.r1, e), 0, TAU);
       ctx.stroke();
     }
 
     for (const o of r.orbs) this.drawOrb(o, tm, A, r, R0);
-    this.drawParts(r, tm, A);
+
+    for (const p of r.parts) {
+      const age = tm - p.at;
+      if (age < 0) continue;
+      const k = age / p.life;
+      ctx.globalAlpha = A * (k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1);
+      ctx.fillStyle = css(p.c);
+      ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s);
+    }
 
     if (r.flash) {
       const k = (tm - r.flash.at) / r.flash.dur;
       if (k >= 0 && k < 1) {
-        ctx.globalAlpha = A * 0.85 * Math.pow(1 - k, 2);
-        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = A * 0.5 * Math.pow(1 - k, 2);
+        ctx.fillStyle = css(FLASH);
         ctx.fillRect(0, 0, w, h);
       }
     }
   }
 
+  // One target: core, ring, 40-tick dial (the countdown), corner brackets
+  // that close in like a lock-on, and a P-label.
   drawOrb(o, tm, A, r, R0) {
     const { ctx } = this;
     const s = Math.max(0, o.s.x) * o.ex.val(tm);
     if (s < 0.01) return;
-    const a = A * o.alpha.val(tm);
+    let a = A * o.alpha.val(tm);
+    if (o.exiting) {
+      const k = tm - o.ex.t0;
+      if (k > 0 && k < 0.2 && Math.sin(k * 110) < 0) a *= 0.25; // digital flicker on exit
+    }
     if (a < 0.01) return;
     const prog = r.phase === 'gather' ? r.progress : 0;
-    const breathe = 1 + 0.032 * Math.sin(tm * (2.3 + 6 * prog) + o.phase);
-    const R = R0 * s * breathe;
+    const R = R0 * s * (1 + 0.018 * Math.sin(tm * (2.2 + 6 * prog) + o.phase));
     let x = o.x;
     let y = o.y;
     if (o.kick) {
       const k = tm - o.kick;
-      if (k >= 0 && k < 0.4) {
-        const amp = (1 - k / 0.4) * R0 * 0.09;
-        x += Math.sin(k * 70) * amp;
-        y += Math.cos(k * 55) * amp * 0.5;
+      if (k >= 0 && k < 0.35) {
+        const amp = (1 - k / 0.35) * R0 * 0.08;
+        x += Math.sin(k * 80) * amp;
       }
     }
     let col = o.color(tm);
     const gray = o.gray.val(tm);
     if (gray > 0) {
-      const l = luma(col) * 255 * 0.8;
-      col = mix(col, [l, l, l + 12], gray * 0.85);
+      const l = luma(col) * 255 * 0.75;
+      col = mix(col, [l, l, l + 8], gray * 0.85);
     }
+    const ink = o.ink.val(tm);
     const wh = o.white.val(tm);
     const hl = o.hl;
+    // line color: player color -> white when selected -> black on the flood
+    let line = mix(col, WHITE, Math.max(wh, hl * 0.9));
+    line = mix(line, INK, ink);
 
     // glow
-    const G = R * 3.2;
-    ctx.globalAlpha = a * (0.7 + 0.3 * hl);
-    ctx.drawImage(glow(col), x - G / 2, y - G / 2, G, G);
-    if (wh > 0.01) {
-      ctx.globalAlpha = a * wh * 0.55;
-      ctx.drawImage(glow(WHITE), x - G / 2, y - G / 2, G, G);
+    if (ink < 0.99) {
+      const G = R * 3.4;
+      ctx.globalAlpha = a * (0.6 + 0.4 * hl) * (1 - ink);
+      ctx.drawImage(glow(col), x - G / 2, y - G / 2, G, G);
     }
 
-    // countdown arc
-    if (prog > 0) {
-      const ar = R * 1.52;
-      ctx.lineCap = 'round';
-      ctx.lineWidth = Math.max(2.5, R0 * 0.065);
-      ctx.globalAlpha = a * 0.16;
-      ctx.strokeStyle = '#ffffff';
+    // dial: unlit ticks, then lit ticks up to the countdown progress
+    const lit = o.role === 'winner' || wh > 0.5 ? TICKS : Math.floor(prog * TICKS);
+    const t0r = R * 1.17;
+    const t1r = R * (1.17 + 0.13);
+    ctx.lineCap = 'butt';
+    ctx.lineWidth = Math.max(1.5, R0 * 0.035);
+    for (let pass = 0; pass < 2; pass++) {
       ctx.beginPath();
-      ctx.arc(x, y, ar, 0, TAU);
+      for (let i = pass === 0 ? lit : 0; i < (pass === 0 ? TICKS : lit); i++) {
+        const ang = -Math.PI / 2 + (i / TICKS) * TAU;
+        const c = Math.cos(ang);
+        const sn = Math.sin(ang);
+        const long = i % 10 === 0 ? 1.06 : 1;
+        ctx.moveTo(x + c * t0r, y + sn * t0r);
+        ctx.lineTo(x + c * t1r * long, y + sn * t1r * long);
+      }
+      if (pass === 0) {
+        ctx.globalAlpha = a * (ink > 0.5 ? 0.35 : 0.24);
+        ctx.strokeStyle = css(line);
+      } else {
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = css(ink > 0.5 ? INK : mix(col, WHITE, 0.35 + 0.65 * Math.max(wh, prog > 0.98 ? 1 : 0)));
+      }
       ctx.stroke();
-      ctx.globalAlpha = a * 0.95;
-      ctx.beginPath();
-      ctx.arc(x, y, ar, -Math.PI / 2, -Math.PI / 2 + TAU * prog);
-      ctx.stroke();
-      ctx.lineCap = 'butt';
-    }
-
-    // orbiting satellites
-    const satR = R * 1.27;
-    const dot = Math.max(2.2, R0 * 0.062) * s;
-    ctx.globalAlpha = a * 0.88;
-    ctx.fillStyle = css(mix(col, WHITE, 0.75));
-    for (let i = 0; i < 3; i++) {
-      const ang = o.spin + (i * TAU) / 3;
-      ctx.beginPath();
-      ctx.arc(x + Math.cos(ang) * satR, y + Math.sin(ang) * satR, dot, 0, TAU);
-      ctx.fill();
     }
 
     // ring
     ctx.globalAlpha = a;
-    ctx.lineWidth = Math.max(3, R * 0.085);
-    ctx.strokeStyle = css(mix(col, WHITE, Math.max(wh, hl * 0.85)));
+    ctx.lineWidth = Math.max(2, R * 0.05);
+    ctx.strokeStyle = css(line);
     ctx.beginPath();
     ctx.arc(x, y, R, 0, TAU);
     ctx.stroke();
 
     // core
-    const cr = R * 0.7;
-    const core = mix(col, WHITE, wh * 0.9);
-    const gr = ctx.createRadialGradient(x - cr * 0.35, y - cr * 0.42, cr * 0.08, x, y, cr);
-    gr.addColorStop(0, css(mix(core, WHITE, 0.5)));
-    gr.addColorStop(0.62, css(core));
-    gr.addColorStop(1, css(mix(core, INK, 0.2)));
-    ctx.fillStyle = gr;
+    const label = o.label && tm >= o.labelAt;
+    const cr = R * (label ? 0.46 : 0.36);
+    const core = mix(mix(col, WHITE, hl * 0.6), INK, ink);
+    ctx.fillStyle = css(core);
     ctx.beginPath();
     ctx.arc(x, y, cr, 0, TAU);
     ctx.fill();
-
-    if (o.label) {
-      const k = clamp((tm - o.labelAt) / 0.38, 0, 1);
-      if (k > 0) {
-        const ls = easeOutBack(k);
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.scale(ls, ls);
-        ctx.font = `800 ${Math.round(cr * 1.02)}px ${FONT}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = luma(core) > 0.6 ? 'rgba(14,10,26,0.9)' : '#ffffff';
-        ctx.fillText(o.label, 0, cr * 0.07);
-        ctx.restore();
-      }
+    if (!label) {
+      ctx.fillStyle = css(ink > 0.5 ? (r.flood ? r.flood.c : col) : INK);
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(2, cr * 0.22), 0, TAU);
+      ctx.fill();
     }
+
+    // corner brackets: faint and wide while gathering, tighten with the
+    // countdown, lock on reveal
+    const lock = Math.max(o.lock.val(tm), prog);
+    const B = R * lerp(1.62, 1.44, lock);
+    const arm = R * 0.32;
+    ctx.lineWidth = Math.max(2, R0 * 0.045);
+    ctx.lineCap = 'square';
+    ctx.strokeStyle = css(line);
+    ctx.globalAlpha = a * (0.32 + 0.68 * Math.max(lock, hl));
+    ctx.beginPath();
+    for (const [sx, sy] of [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ]) {
+      const cx = x + sx * B;
+      const cy = y + sy * B;
+      ctx.moveTo(cx - sx * arm, cy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy - sy * arm);
+    }
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // P-label above the top-left bracket
+    ctx.globalAlpha = a * 0.9;
+    ctx.fillStyle = css(line);
+    ctx.font = `600 ${Math.round(clamp(R0 * 0.24, 10, 14))}px ${MONO}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(o.tag, clamp(x - B, 6, this.w - 30), Math.max(18, y - B - 5));
+
+    // letter / number inside the core
+    if (label) {
+      const k = clamp((tm - o.labelAt) / 0.32, 0, 1);
+      const ls = easeOutBack(k);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(ls, ls);
+      ctx.globalAlpha = a;
+      ctx.font = `700 ${Math.round(cr * 1.05)}px ${MONO}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = luma(core) > 0.55 ? css(INK) : '#ffffff';
+      ctx.fillText(o.label, 0, cr * 0.06);
+      ctx.restore();
+    }
+
+    // reaction time under the target
     if (o.sub) {
-      const yy = y + R * 1.95;
-      ctx.font = `800 ${Math.round(R0 * 0.42)}px ${FONT}`;
+      const yy = y + B + R0 * 0.55;
+      ctx.font = `700 ${Math.round(R0 * 0.36)}px ${MONO}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const tw = ctx.measureText(o.sub).width + R0 * 0.5;
-      const th = R0 * 0.7;
-      ctx.globalAlpha = a * 0.55;
-      ctx.fillStyle = '#0b0914';
-      this.pill(x - tw / 2, yy - th / 2, tw, th);
-      ctx.fill();
+      const th = R0 * 0.62;
       ctx.globalAlpha = a;
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = css(INK);
+      ctx.fillRect(x - tw / 2, yy - th / 2, tw, th);
+      ctx.fillStyle = r.flood ? css(r.flood.c) : '#ffffff';
       ctx.fillText(o.sub, x, yy + 1);
     }
-  }
-
-  pill(x, y, w, h) {
-    const { ctx } = this;
-    const r = h / 2;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
   }
 
   drawGroups(r, tm, A, R0) {
@@ -1208,8 +1261,8 @@ export class Engine {
       if (!pts.length) continue;
       const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
       const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-      const size = R0 * 10;
-      ctx.globalAlpha = A * 0.28 * e;
+      const size = R0 * 9;
+      ctx.globalAlpha = A * 0.3 * e;
       ctx.drawImage(glow(g.c), cx - size / 2, cy - size / 2, size, size);
       if (pts.length < 2) continue;
       pts.sort((p, q) => Math.atan2(p[1] - cy, p[0] - cx) - Math.atan2(q[1] - cy, q[0] - cx));
@@ -1218,55 +1271,19 @@ export class Engine {
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
       if (pts.length > 2) ctx.closePath();
       if (pts.length > 2) {
-        ctx.globalAlpha = A * 0.1 * e;
+        ctx.globalAlpha = A * 0.07 * e;
         ctx.fillStyle = css(g.c);
         ctx.fill();
       }
-      let len = 0;
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i];
-        const q = pts[(i + 1) % pts.length];
-        if (i === pts.length - 1 && pts.length === 2) break;
-        len += Math.hypot(q[0] - p[0], q[1] - p[1]);
-      }
-      ctx.setLineDash([len * e, len + 1]);
-      ctx.globalAlpha = A * 0.7;
+      ctx.setLineDash([6, 6]);
+      ctx.lineDashOffset = -tm * 20;
+      ctx.globalAlpha = A * 0.75 * e;
       ctx.strokeStyle = css(g.c);
-      ctx.lineWidth = Math.max(3, R0 * 0.07);
-      ctx.lineJoin = 'round';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
     }
-  }
-
-
-  drawParts(r, tm, A) {
-    const { ctx, dpr } = this;
-    let any = false;
-    for (const p of r.parts) {
-      const age = tm - p.at;
-      if (age < 0) continue;
-      const k = age / p.life;
-      const a = A * (k > 0.65 ? 1 - (k - 0.65) / 0.35 : 1);
-      if (a <= 0) continue;
-      any = true;
-      const cos = Math.cos(p.rot);
-      const sin = Math.sin(p.rot);
-      const fy = p.kind === 'c' ? Math.cos(p.flip) : 1;
-      ctx.setTransform(dpr * cos, dpr * sin, -dpr * sin * fy, dpr * cos * fy, dpr * p.x, dpr * p.y);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = css(p.c);
-      if (p.kind === 'c') ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-      else {
-        ctx.beginPath();
-        ctx.moveTo(0, -p.h / 2);
-        ctx.lineTo(p.w / 2, p.h / 2);
-        ctx.lineTo(-p.w / 2, p.h / 3);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-    if (any) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   // ---------- state for the UI ----------

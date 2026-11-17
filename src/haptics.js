@@ -1,11 +1,10 @@
 // Haptics, as far as the web allows.
 //  - Android / Chrome: Vibration API.
 //  - iOS has no Vibration API. Safari 18+ plays a system tick when an
-//    <input type=checkbox switch> toggles. Programmatic toggles worked on
-//    iOS 17.4-26.4; iOS 26.5 limits it to a real tap on a switch. So we do
-//    both: a hidden switch we click from code (old iOS), and invisible
-//    switches laid over the main buttons (any iOS 18+: the user's own tap
-//    lands on a real switch).
+//    <input type=checkbox switch> toggles. Toggling a hidden one from code
+//    worked on iOS 17.4-26.4; since 26.5 only a real tap on a switch ticks
+//    (the settings switches). Invisible switches over buttons were tried and
+//    dropped: a swipe across one could toggle it and fire the button.
 import { settings } from './store.js';
 
 const ua = navigator.userAgent;
@@ -68,29 +67,4 @@ export function haptic(kind = 'light') {
       else setTimeout(() => el.click(), i * 70);
     }
   }
-}
-
-// Bind a tap handler. On iOS an invisible native switch covers the control,
-// so the finger lands on a real switch and Safari plays its own tick.
-export function onTap(el, fn) {
-  el.addEventListener('click', (e) => {
-    if (e.target && e.target.classList && e.target.classList.contains('hx')) return;
-    fn(e);
-  });
-  if (IS_IOS && SWITCH) {
-    // visible only while haptics are on (body.hx-on), see styles.css
-    const ov = document.createElement('input');
-    ov.type = 'checkbox';
-    ov.setAttribute('switch', '');
-    ov.className = 'hx';
-    ov.tabIndex = -1;
-    ov.setAttribute('aria-hidden', 'true');
-    ov.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (el.disabled || el.getAttribute('aria-disabled') === 'true') return;
-      fn(e);
-    });
-    el.appendChild(ov);
-  }
-  return el;
 }

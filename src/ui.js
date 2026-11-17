@@ -1,11 +1,11 @@
 // HUD, mode picker, settings and install help.
 import { audioRunning, onAudioState, sfx } from './audio.js';
-import { button, fill, h, icon, overlayOpen, segmented, sheet, switchEl, toast } from './dom.js';
-import { MAX_MARKERS, MODE_ORDER, MODES, PALETTES } from './engine.js';
+import { button, fill, h, icon, segmented, sheet, switchEl, toast } from './dom.js';
+import { MODE_ORDER, MODES, PALETTES } from './engine.js';
 import { HAPTIC_KIND, IS_IOS } from './haptics.js';
 import { fmtDate, setLang, t } from './i18n.js';
-import { ICONS, MODE_ICONS } from './icons.js';
-import { isLocked, isPro, onPremium, premium, PROMO_KINDS, show, flush } from './promo.js';
+import { MODE_ICONS, RETICLE } from './icons.js';
+import { flush, isLocked, isPro, onPremium, premium, PROMO_KINDS, show } from './promo.js';
 import { dropAll, saveSettings, settings } from './store.js';
 
 export const ui = {
@@ -17,7 +17,6 @@ export const ui = {
 };
 
 const $ = (id) => document.getElementById(id);
-const MODE_COLORS = { one: '#ff5c7a', teams: '#38bdf8', order: '#ffb020', n: '#2ee59d', elim: '#f15bb5', reaction: '#ffe14d' };
 export const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
 let els = {};
@@ -26,8 +25,8 @@ export function buildHud() {
   const hud = $('hud');
   hud.replaceChildren();
   els = {};
-  els.settingsBtn = button({ class: 'icon-btn glass', 'data-ui': '', 'aria-label': t('a11y.settings') }, icon('gear'), openSettings);
-  els.modeChip = button({ class: 'mode-chip glass', 'data-ui': '', 'aria-label': t('a11y.mode') }, [], openModes);
+  els.settingsBtn = button({ class: 'icon-btn', 'data-ui': '', 'aria-label': t('a11y.settings') }, icon('gear'), openSettings);
+  els.modeChip = button({ class: 'mode-chip', 'data-ui': '', 'aria-label': t('a11y.mode') }, [], openModes);
   els.proBtn = button({ class: 'pro-btn', 'data-ui': '', 'aria-label': t('a11y.premium') }, [], () => {
     if (ui.state.phase !== 'idle' && ui.state.input === 'hold') return;
     if (premium.active()) openSettings();
@@ -35,52 +34,31 @@ export function buildHud() {
   });
   els.top = h('div', { class: 'top' }, els.settingsBtn, els.modeChip, els.proBtn);
 
-  els.sound = h('div', { class: 'sound-hint glass' }, icon('speaker'), h('span', { text: t('sound.tap') }));
-  // soft drifting light behind the idle screen
-  els.ambient = h(
-    'div',
-    { class: 'ambient', 'aria-hidden': 'true' },
-    [
-      ['#9b7bff', '18%', '22%', '62vmin', '13s'],
-      ['#ff4d6d', '84%', '34%', '56vmin', '11s'],
-      ['#38bdf8', '22%', '78%', '58vmin', '15s'],
-      ['#2ee59d', '80%', '86%', '44vmin', '12s'],
-    ].map(([c, x, y, s, d]) => h('i', { style: { '--c': c, '--x': x, '--y': y, '--s': s, '--d': d } })),
-  );
-  // "players" orbiting the hint orb, like on the app icon
-  const orbit = h(
-    'span',
-    { class: 'hint-orbit' },
-    [
-      ['#2ee59d', 0],
-      ['#38bdf8', 120],
-      ['#ffb020', 240],
-    ].map(([c, a]) => h('i', { style: { '--c': c, '--a': `${a}deg` } })),
-  );
+  els.sound = h('div', { class: 'sound-hint' }, icon('speaker'), h('span', { text: t('sound.tap') }));
   els.hint = h(
     'div',
     { class: 'hint', 'aria-live': 'polite' },
-    h('div', { class: 'hint-art', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'), orbit, h('b')),
+    h('div', { class: 'hint-art', html: RETICLE }),
     (els.hintTitle = h('div', { class: 'hint-title' })),
-    (els.hintSub = h('div', { class: 'hint-sub' })),
+    h('div', { class: 'prompt' }, h('span', { class: 'pr', text: '>' }), (els.hintSub = h('span')), h('span', { class: 'caret' })),
+    (els.hintMeta = h('div', { class: 'hint-meta' })),
     h('div', { class: 'hint-mouse', text: t('hint.mouse') }),
     els.sound,
   );
   syncSoundHint();
-  els.wait = h('div', { class: 'wait glass' });
-  els.caption = h('div', { class: 'caption glass', 'aria-live': 'polite' });
+  els.status = h('div', { class: 'status' }, h('i', { class: 'st-dot' }), h('span'));
+  els.caption = h('div', { class: 'caption', 'aria-live': 'polite' });
   els.big = h('div', { class: 'big', 'aria-live': 'assertive' }, (els.bigText = h('b')), (els.bigSub = h('span')));
 
-  els.mkClear = button({ class: 'mk-btn glass', 'data-ui': '' }, [], () => ui.engine.markerClear());
+  els.mkClear = button({ class: 'mk-btn', 'data-ui': '' }, [], () => ui.engine.markerClear());
   els.mkGo = button({ class: 'mk-btn primary', 'data-ui': '' }, [], () => {
-    const s = ui.state;
-    if (s.phase === 'result') ui.engine.markerAgain();
+    if (ui.state.phase === 'result') ui.engine.markerAgain();
     else ui.engine.markerGo();
   });
   els.mkbar = h('div', { class: 'mkbar' }, els.mkClear, els.mkGo);
 
-  els.banner = h('div', { class: 'banner glass', 'data-ui': '' });
-  hud.append(els.ambient, els.top, els.hint, els.wait, els.caption, els.big, els.mkbar, els.banner);
+  els.banner = h('div', { class: 'banner', 'data-ui': '' });
+  hud.append(els.top, els.hint, els.status, els.caption, els.big, els.mkbar, els.banner);
   renderTexts();
   renderBanner();
   onEngineState(ui.state);
@@ -93,31 +71,25 @@ onAudioState(syncSoundHint);
 
 export function renderTexts() {
   const m = settings.mode;
-  const suffix = m === 'n' ? ` · ${settings.pickN}` : m === 'teams' ? ` · ${settings.teams}` : '';
-  fill(els.modeChip,
-    h('span', { class: 'chip-ic', html: MODE_ICONS[m], style: { color: MODE_COLORS[m] } }),
-    h('span', { class: 'chip-name', text: t(`mode.${m}`) + suffix }),
-    settings.markers ? h('span', { class: 'chip-mk', html: MODE_ICONS.markers, title: t('mk.name') }) : null,
+  const suffix = m === 'n' ? ` ×${settings.pickN}` : m === 'teams' ? ` ×${settings.teams}` : '';
+  fill(
+    els.modeChip,
+    h('span', { class: 'chip-ic', html: MODE_ICONS[m] }),
+    h('span', { class: 'chip-name' }, t(`mode.${m}`), suffix ? h('em', { text: suffix }) : null),
+    settings.markers ? h('span', { class: 'chip-tag', text: t('mk.short') }) : null,
     icon('chevron', 'ic chev'),
   );
-  if (premium.active()) {
-    els.proBtn.className = 'pro-btn is-on glass';
-    fill(els.proBtn, icon("crown"));
-  } else {
-    els.proBtn.className = 'pro-btn';
-    fill(els.proBtn, h('span', { text: 'PRO' }));
-  }
+  els.proBtn.classList.toggle('is-on', premium.active());
+  fill(els.proBtn, premium.active() ? icon('check', 'ic pro-ok') : h('i', { class: 'pro-dot' }), h('span', { text: 'PRO' }));
   const min = MODES[m].min(settings);
   if (settings.markers) {
     els.hintTitle.textContent = t('hint.mk.title');
-    els.hintSub.textContent = `${t('hint.mk.sub')} · ${t('hint.min', min)}`;
+    els.hintSub.textContent = t('hint.mk.sub');
   } else {
     els.hintTitle.textContent = t('hint.title');
-    const sub = m === 'n' ? t('hint.n', settings.pickN) : m === 'teams' ? t('hint.teams', settings.teams) : t(`hint.${m}`);
-    els.hintSub.textContent = `${sub} · ${t('hint.min', min)}`;
+    els.hintSub.textContent = m === 'n' ? t('hint.n', settings.pickN) : m === 'teams' ? t('hint.teams', settings.teams) : t(`hint.${m}`);
   }
-  els.wait.textContent = t('cap.wait');
-  els.settingsBtn.setAttribute('aria-label', t('a11y.settings'));
+  els.hintMeta.textContent = `${t('hint.min', min)} · ${t('hint.max')}`;
   renderMkbar();
 }
 
@@ -125,7 +97,7 @@ function renderMkbar() {
   const s = ui.state;
   const result = s.phase === 'result';
   fill(els.mkClear, h('span', { text: result ? t('mk.new') : t('mk.clear') }));
-  fill(els.mkGo, h('span', { text: result ? t('mk.again') : t('mk.go') }), !result ? h('small', { text: `${s.live}` }) : null);
+  fill(els.mkGo, h('span', { text: result ? t('mk.again') : t('mk.go') }), !result ? h('small', { text: String(s.live) }) : null);
   els.mkGo.disabled = !result && (s.live < s.min || s.armed || s.phase !== 'gather');
 }
 
@@ -139,21 +111,44 @@ export function onEngineState(s) {
   b.classList.toggle('markers', markers);
   b.classList.toggle('has-orbs', s.phase !== 'idle');
   b.classList.toggle('show-mkbar', markers && s.live > 0);
-  els.wait.classList.toggle('show', !!s.waiting);
+  if (s.phase !== 'gather') status(null);
   if (markers) renderMkbar();
   if (s.phase === 'idle' && prev.phase !== 'idle') flush();
 }
 
-export function caption(cap) {
-  const el = els.caption;
-  if (!cap || (!cap.text && !cap.chips)) {
+// live "players 3 · 1.2s" line while fingers gather
+export function status(s) {
+  const el = els.status;
+  if (!el) return;
+  // markers: the top bar stays and the Pick button already shows the count
+  if (!s || (s.marker && !s.counting)) {
     el.classList.remove('show');
     return;
   }
-  const kids = [];
-  if (cap.text) kids.push(h('span', { class: 'cap-text', text: cap.text }));
-  if (cap.chips) cap.chips.forEach((c) => kids.push(h('span', { class: 'cap-chip' }, h('i', { style: { background: c.color, color: c.color } }), c.text)));
-  el.replaceChildren(...kids);
+  let txt;
+  if (s.counting) txt = `${t('st.players')} ${s.live} · ${s.left.toFixed(1)} ${t('st.sec')}`;
+  else if (s.marker) txt = `${t('st.players')} ${s.live} · ${t('st.press')}`;
+  else txt = `${t('st.players')} ${s.live}/${s.min} · ${t('st.need')}`;
+  if (el.dataset.t !== txt) {
+    el.dataset.t = txt;
+    el.lastChild.textContent = txt;
+  }
+  el.classList.toggle('counting', !!s.counting);
+  el.classList.add('show');
+}
+
+export function caption(cap) {
+  const el = els.caption;
+  if (!cap || (!cap.text && !cap.chips && !cap.id)) {
+    el.classList.remove('show');
+    return;
+  }
+  const row = [];
+  const ids = cap.badges || (cap.id ? [{ id: cap.id, color: cap.color }] : []);
+  ids.forEach((b) => row.push(h('span', { class: 'cap-id', style: { background: b.color }, text: b.id })));
+  if (cap.text) row.push(h('span', { class: 'cap-text', text: cap.text }));
+  if (cap.chips) cap.chips.forEach((c) => row.push(h('span', { class: 'cap-chip' }, h('i', { style: { background: c.color } }), c.text)));
+  fill(el, h('div', { class: 'cap-row' }, row), cap.line ? h('div', { class: 'cap-line', text: cap.line }) : null);
   el.classList.remove('show');
   void el.offsetWidth;
   el.classList.add('show');
@@ -169,9 +164,8 @@ export function big(b) {
   bt.textContent = b.text || '';
   els.bigSub.textContent = b.sub || '';
   el.className = `big show ${b.kind || ''}`;
-  // shrink long words (e.g. Ukrainian "ВІДПУСКАЙ!") to fit the screen
+  // shrink long words (e.g. Ukrainian "ВІДПУСКАЙ!") to fit; the pop overshoots
   bt.style.fontSize = '';
-  // the pop animation overshoots ~18%, so "go" leaves room for it
   const room = el.clientWidth * (b.kind === 'go' ? 0.82 : 0.96);
   const wide = bt.offsetWidth;
   if (wide > room) bt.style.fontSize = `${(parseFloat(getComputedStyle(bt).fontSize) * room) / wide}px`;
@@ -195,7 +189,7 @@ function renderBanner() {
   el.classList.toggle('show', !hidden);
   if (hidden) return;
   el.replaceChildren(
-    h('img', { src: '/icons/icon-192.png', alt: '', width: 40, height: 40 }),
+    h('img', { src: '/icons/icon-192.png', alt: '', width: 38, height: 38 }),
     h('div', { class: 'banner-text' }, h('b', { text: t('inst.banner') }), h('span', { text: t('inst.banner.s') })),
     button({ class: 'banner-go', 'data-ui': '' }, ui.installPrompt ? t('inst.install') : t('inst.how'), openInstall),
     button({ class: 'icon-btn banner-x', 'data-ui': '', 'aria-label': t('a11y.close') }, icon('close'), () => {
@@ -229,42 +223,40 @@ export function openInstall() {
     content: h(
       'ol',
       { class: 'steps' },
-      steps.map(([ic, text], i) => h('li', null, h('span', { class: 'step-n', text: String(i + 1) }), icon(ic, 'ic step-ic'), h('span', { text }))),
+      steps.map(([ic, text], i) => h('li', null, h('span', { class: 'step-n', text: String(i + 1).padStart(2, '0') }), icon(ic, 'ic step-ic'), h('span', { text }))),
     ),
   });
 }
 
 // ---------- mode sheet ----------
-let modeSheet = null;
 function openModes() {
   if (ui.state.phase !== 'idle' && ui.state.input === 'hold') return;
   const body = h('div', { class: 'modes' });
   const draw = () => {
-    fill(body,
+    fill(
+      body,
       h(
         'div',
         { class: 'mode-grid' },
-        MODE_ORDER.map((id) => {
+        MODE_ORDER.map((id, i) => {
           const locked = isLocked(`mode:${id}`);
-          const card = button(
+          return button(
             { class: `mode-card${settings.mode === id ? ' on' : ''}${locked ? ' locked' : ''}`, 'data-m': id, 'aria-pressed': String(settings.mode === id) },
             [
-              h('span', { class: 'mc-ic', html: MODE_ICONS[id] }),
+              h('span', { class: 'mc-top' }, h('span', { class: 'mc-ic', html: MODE_ICONS[id] }), isPro(`mode:${id}`) ? h('span', { class: `pro-tag${locked ? '' : ' owned'}`, text: locked ? 'PRO' : 'PRO ✓' }) : h('span', { class: 'mc-n', text: String(i + 1).padStart(2, '0') })),
               h('b', { text: t(`mode.${id}`) }),
               h('small', { text: t(`mode.${id}.d`) }),
-              isPro(`mode:${id}`) ? h('span', { class: `pro-badge${locked ? '' : ' owned'}`, text: 'PRO' }) : null,
             ],
             () => pickMode(id, draw),
           );
-          return card;
         }),
       ),
-      optionsFor(settings.mode, draw),
+      optionsFor(settings.mode),
       markersRow(draw),
     );
   };
   draw();
-  modeSheet = sheet({ title: t('sheet.mode'), content: body, cls: 'mode-sheet', onClose: () => (modeSheet = null) });
+  sheet({ title: t('sheet.mode'), content: body, cls: 'mode-sheet' });
 }
 
 function pickMode(id, redraw) {
@@ -287,35 +279,20 @@ function applyMode(id, redraw) {
   redraw && redraw();
 }
 
-function optionsFor(id, redraw) {
-  if (id === 'n') {
-    return h(
-      'div',
-      { class: 'opt' },
-      h('span', { class: 'opt-title', text: t('opt.n') }),
-      segmented([2, 3, 4].map((v) => ({ value: v, label: String(v) })), settings.pickN, (v) => {
-        settings.pickN = v;
-        saveSettings();
-        syncEngine();
-        renderTexts();
-      }),
-    );
-  }
-  if (id === 'teams') {
-    return h(
-      'div',
-      { class: 'opt' },
-      h('span', { class: 'opt-title', text: t('opt.teams') }),
-      segmented([2, 3, 4].map((v) => ({ value: v, label: String(v) })), settings.teams, (v) => {
-        settings.teams = v;
-        saveSettings();
-        syncEngine();
-        renderTexts();
-      }),
-    );
-  }
-  void redraw;
-  return null;
+function optionsFor(id) {
+  if (id !== 'n' && id !== 'teams') return null;
+  const key = id === 'n' ? 'pickN' : 'teams';
+  return h(
+    'div',
+    { class: 'opt' },
+    h('span', { class: 'opt-title', text: t(id === 'n' ? 'opt.n' : 'opt.teams') }),
+    segmented([2, 3, 4].map((v) => ({ value: v, label: String(v) })), settings[key], (v) => {
+      settings[key] = v;
+      saveSettings();
+      syncEngine();
+      renderTexts();
+    }),
+  );
 }
 
 function markersRow(redraw) {
@@ -351,10 +328,15 @@ function markersRow(redraw) {
     t('mk.name'),
   );
   return h(
-    'label',
+    'div',
     { class: `row mk-row${disabled ? ' dim' : ''}` },
     h('span', { class: 'row-ic', html: MODE_ICONS.markers }),
-    h('span', { class: 'row-text' }, h('b', null, t('mk.name'), isPro('markers') ? h('span', { class: `pro-badge${locked ? '' : ' owned'}`, text: 'PRO' }) : null), h('small', { text: t('mk.d') })),
+    h(
+      'span',
+      { class: 'row-text' },
+      h('b', null, t('mk.name'), isPro('markers') ? h('span', { class: `pro-tag${locked ? '' : ' owned'}`, text: locked ? 'PRO' : 'PRO ✓' }) : null),
+      h('small', { text: t('mk.d') }),
+    ),
     sw,
   );
 }
@@ -363,22 +345,23 @@ export function syncEngine() {
   const e = ui.engine;
   if (!e) return;
   let mode = settings.mode;
-  if (isLocked(`mode:${mode}`)) mode = settings.mode = 'one';
+  if (!MODES[mode] || isLocked(`mode:${mode}`)) mode = settings.mode = 'one';
   if (settings.markers && (isLocked('markers') || mode === 'reaction')) settings.markers = false;
-  if (isLocked(`palette:${settings.palette}`)) settings.palette = 'neon';
+  if (!PALETTES[settings.palette] || isLocked(`palette:${settings.palette}`)) settings.palette = 'neon';
   e.setMode(mode, { pickN: settings.pickN, teams: settings.teams });
   e.setInput(settings.markers ? 'marker' : 'hold');
 }
 
 // ---------- settings ----------
+// Rows are never <label>s: like iOS Settings, only the switch itself toggles.
 function row({ ic, title, note, control, cls = '', onClick }) {
   const kids = [
-    ic ? h('span', { class: 'row-ic', html: ICONS[ic] || ic }) : null,
+    ic ? icon(ic, 'ic row-ic') : null,
     h('span', { class: 'row-text' }, h('b', { text: title }), note ? h('small', { text: note }) : null),
     control || null,
   ];
   if (onClick) return button({ class: `row tap ${cls}` }, [...kids, icon('chevron', 'ic row-chev')], onClick);
-  return h(control && control.tagName === 'INPUT' ? 'label' : 'div', { class: `row ${cls}` }, kids);
+  return h('div', { class: `row ${cls}` }, kids);
 }
 
 function section(title, rows) {
@@ -390,11 +373,11 @@ export function openSettings() {
   if (ui.state.phase !== 'idle' && ui.state.input === 'hold') return;
   const body = h('div', { class: 'settings' });
   const draw = () => {
-    const hapNote = t(`hap.${HAPTIC_KIND}`);
     const p = premium.get();
-    let premNote = t('prem.off');
+    let premNote = '';
     if (premium.active()) premNote = p.until ? (p.plan === 'trial' ? t('prem.until', fmtDate(p.until)) : t('prem.paid', `${p.plan} · ${fmtDate(p.until)}`)) : t('prem.forever');
-    fill(body,
+    fill(
+      body,
       section(t('set.game'), [
         h(
           'div',
@@ -408,28 +391,35 @@ export function openSettings() {
         row({
           title: t('set.sound'),
           note: t('set.sound.n'),
-          control: switchEl(settings.sound, (on) => {
-            settings.sound = on;
-            syncSoundHint();
-            saveSettings();
-            if (on) sfx.ui();
-          }, t('set.sound')),
+          control: switchEl(
+            settings.sound,
+            (on) => {
+              settings.sound = on;
+              syncSoundHint();
+              saveSettings();
+              if (on) sfx.ui();
+            },
+            t('set.sound'),
+          ),
         }),
         row({
           title: t('set.haptics'),
-          note: hapNote,
-          control: switchEl(settings.haptics, (on) => {
-            settings.haptics = on;
-            saveSettings();
-            document.body.classList.toggle('hx-on', on);
-          }, t('set.haptics')),
+          note: t(`hap.${HAPTIC_KIND}`),
+          control: switchEl(
+            settings.haptics,
+            (on) => {
+              settings.haptics = on;
+              saveSettings();
+            },
+            t('set.haptics'),
+          ),
         }),
         h(
           'div',
           { class: 'row col' },
           h('span', { class: 'row-text' }, h('b', { text: t('set.palette') })),
           segmented(
-            ['neon', 'pastel', 'sunset'].map((v) => ({ value: v, label: t(`pal.${v}`), locked: isLocked(`palette:${v}`) })),
+            ['neon', 'phosphor', 'amber'].map((v) => ({ value: v, label: t(`pal.${v}`), locked: isLocked(`palette:${v}`) })),
             settings.palette,
             (v) => {
               if (isLocked(`palette:${v}`)) {
@@ -475,18 +465,30 @@ export function openSettings() {
         ),
       ]),
       section(t('set.premium'), [
-        row({ ic: 'crown', title: premium.active() ? t('prem.on') : t('prem.off'), note: premium.active() ? premNote : '', cls: premium.active() ? 'prem-on' : '' }),
+        row({ ic: 'key', title: premium.active() ? t('prem.on') : t('prem.off'), note: premNote, cls: premium.active() ? 'prem-on' : '' }),
         premium.active()
-          ? row({ title: t('prem.reset'), cls: 'danger', onClick: () => { premium.reset(); toast(t('toast.reset')); draw(); } })
+          ? row({
+              title: t('prem.reset'),
+              cls: 'danger',
+              onClick: () => {
+                premium.reset();
+                toast(t('toast.reset'));
+                draw();
+              },
+            })
           : row({ title: t('prem.get'), cls: 'accent', onClick: () => show('paywall', { force: true }) }),
       ]),
       section(t('set.promos'), [
         row({
           title: t('set.autoPromos'),
-          control: switchEl(settings.autoPromos, (on) => {
-            settings.autoPromos = on;
-            saveSettings();
-          }, t('set.autoPromos')),
+          control: switchEl(
+            settings.autoPromos,
+            (on) => {
+              settings.autoPromos = on;
+              saveSettings();
+            },
+            t('set.autoPromos'),
+          ),
         }),
         ...PROMO_KINDS.map((k) =>
           row({
@@ -496,14 +498,10 @@ export function openSettings() {
           }),
         ),
       ]),
-      section(t('set.install'), [
-        isStandalone()
-          ? row({ ic: 'check', title: t('inst.done'), cls: 'ok' })
-          : row({ ic: 'plusBox', title: t('inst.row'), onClick: openInstall }),
-      ]),
+      section(t('set.install'), [isStandalone() ? row({ ic: 'check', title: t('inst.done'), cls: 'ok' }) : row({ ic: 'plusBox', title: t('inst.row'), onClick: openInstall })]),
       section(t('set.about'), [
         row({ title: t('about.touches'), note: t('about.limit'), control: h('span', { class: 'row-val', text: String(ui.maxTouches) }) }),
-        row({ title: `Pikko`, note: `${t('about.version')} ${ui.version}` }),
+        row({ title: 'Pikko', note: `${t('about.version')} ${ui.version}` }),
         row({
           title: t('about.resetAll'),
           cls: 'danger',
@@ -529,6 +527,7 @@ export function openSettings() {
   });
 }
 
+let swatchRefresh = () => {};
 function paletteSwatches() {
   const el = h('div', { class: 'swatches', 'aria-hidden': 'true' });
   const paint = () => el.replaceChildren(...(PALETTES[settings.palette] || PALETTES.neon).colors.slice(0, 10).map((c) => h('i', { style: { background: c } })));
@@ -536,7 +535,6 @@ function paletteSwatches() {
   swatchRefresh = paint;
   return el;
 }
-let swatchRefresh = () => {};
 
 export function setupPremiumSync() {
   onPremium(() => {
@@ -544,5 +542,3 @@ export function setupPremiumSync() {
     renderTexts();
   });
 }
-
-export const constants = { MAX_MARKERS };

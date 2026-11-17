@@ -5,14 +5,13 @@ import { lang, setLang, t } from './i18n.js';
 import { attachInput } from './input.js';
 import { checkTrialEnd, onBoot, onResume, onRoundDone, premium, setGate } from './promo.js';
 import { saveSettings, settings, stats } from './store.js';
-import { big, buildHud, caption, isStandalone, onEngineState, refreshBanner, renderTexts, setupPremiumSync, syncEngine, ui } from './ui.js';
+import { big, buildHud, caption, isStandalone, onEngineState, refreshBanner, renderTexts, setupPremiumSync, status, syncEngine, ui } from './ui.js';
 
 /* global __VERSION__ */
 const VERSION = typeof __VERSION__ !== 'undefined' ? __VERSION__ : 'dev';
 ui.version = VERSION;
 
 setLang(settings.lang);
-document.body.classList.toggle('hx-on', !!settings.haptics);
 document.body.classList.toggle('standalone', isStandalone());
 
 // localized manifest (name, shortcuts) for browsers that read it at install time
@@ -35,6 +34,7 @@ const engine = new Engine(document.getElementById('stage'), {
   big,
   toast,
   roundDone: onRoundDone,
+  status,
 });
 ui.engine = engine;
 

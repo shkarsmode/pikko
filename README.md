@@ -1,6 +1,6 @@
 # Pikko — finger picker for iPhone
 
-Everyone puts a finger on the screen. Every finger gets its own glowing orb, and once nobody moves for a moment, Pikko picks: who starts, who pays, who goes first. It is a PWA built to feel like a native App Store app: fluid animations, real multi-touch, sound, haptics where iOS allows them, offline support and a Home Screen install.
+Everyone puts a finger on the screen. Every finger gets a target with a countdown dial, and once nobody moves for a moment, Pikko locks on and picks: who starts, who pays, who goes first. It is a PWA built to feel like a native App Store app, with a dark engineering look (dot grid, reticles, mono labels): fluid animations, real multi-touch, sound, haptics where iOS allows them, offline support and a Home Screen install.
 
 **Try it:** https://pikko-rose.vercel.app. On iPhone, open it in Safari, then Share → Add to Home Screen.
 
@@ -18,17 +18,17 @@ Everyone puts a finger on the screen. Every finger gets its own glowing orb, and
 | Reflex | “Get ready…” → “LIFT!”: the fastest finger wins, lifting early is a false start | PRO |
 | Markers | for 6+ players: everyone taps once (up to 24), then press Pick | PRO |
 
-The Pastel and Sunset color themes are PRO too. Picks use `crypto.getRandomValues` with rejection sampling, so every finger has the same chance. The UI speaks English, Russian and Ukrainian (auto or manual).
+The Phosphor and Amber color themes are PRO too. Picks use `crypto.getRandomValues` with rejection sampling, so every finger has the same chance. The UI speaks English, Russian and Ukrainian (auto or manual).
 
 ## Mock paywall
 
 ![Promo screens](docs/promos.png)
 
-Nothing is ever charged: a “purchase” waits a second and flips a flag in `localStorage`.
+Nothing is ever charged: a “purchase” waits a second and flips a flag in `localStorage`. Taps only count when the finger did not move and nothing scrolled, like UIKit, so scrolling a sheet never selects a row; sheets also close with a pull-down from the top of their content.
 
 | Screen | When it shows up |
 | --- | --- |
-| First-launch gift (3 days of Premium) | first launch |
+| First-launch gift (a terminal that “activates” 3 days of Pro) | first launch |
 | Full paywall (3 plans, free-trial switch, close button fades in after 2 s) | PRO button, every 3rd launch, every 8th round |
 | −50% discount with a 10-minute timer | every 4th round |
 | Locked-mode sheet | tapping a PRO mode, Markers or a PRO color theme |
@@ -40,7 +40,7 @@ Each screen has 2–3 copy variants. A promo never interrupts a round: it waits 
 
 - **Home Screen quick actions.** Native apps like Chooser put a “free trial” item in the long-press menu of their icon. A web app on iOS cannot: Safari on iOS ignores the manifest `shortcuts` (Safari on macOS has read them since 17.4), and the long-press menu of a web app shows only system items. Pikko still ships the shortcuts, and they work on Android and in desktop Chrome/Edge. On iPhone, the closest substitute is the “Wait, don’t go yet!” screen when you return to the app.
 - **Multi-touch.** iPhone reports at most 5 simultaneous touches (iPad 11), for native apps too. A 6th finger makes iOS cancel every touch (`touchcancel`). Pikko catches that and suggests Markers. Settings → About shows the most fingers your device reported.
-- **Haptics.** iOS has no Vibration API. On iOS 17.4–26.4, clicking a hidden `<input type="checkbox" switch>` from code plays the system tick. Since iOS 26.5 the tick only comes from a real tap on a switch, so Pikko lays invisible switches over its buttons and toggles. On current iOS the pick itself has no haptics. Android uses `navigator.vibrate`.
+- **Haptics.** iOS has no Vibration API. On iOS 17.4–26.4, clicking a hidden `<input type="checkbox" switch>` from code plays the system tick, so Pikko uses it there. Since iOS 26.5 the tick only comes from a real tap on a switch: Pikko's settings use real switches, and the pick itself has no haptics on current iOS. (An earlier version laid invisible switches over buttons; a swipe across one could toggle it and open a menu item, so that trick is gone.) Android uses `navigator.vibrate`.
 - **Sound.** All sounds are synthesized with Web Audio, no files. iOS starts audio only on `touchend` or a click, never on `touchstart`, so until the first tap the idle screen shows “Tap once to turn on sound”. `navigator.audioSession.type = 'ambient'` follows the silent switch and mixes with music.
 - **120 Hz.** `requestAnimationFrame` in Safari and in Home Screen web apps is capped at 60 Hz by default. Every animation is time-based, so it looks the same at 60 and 120 Hz.
 - **Launch screen.** iOS does not build one from the manifest. It needs an `apple-touch-startup-image` per screen size: 26 here, for 13 iPhone sizes × 2 orientations. WebKit bug 326500 makes `device-height` queries launch to a black screen on iOS 27.0.1, so the media queries use `device-width` + pixel ratio only.
@@ -57,7 +57,7 @@ Plain JavaScript modules and Canvas 2D, no framework. esbuild bundles about 105 
 src/engine.js   orbs, countdown, every mode, effects (Canvas 2D; the loop sleeps when idle)
 src/input.js    multi-touch on the document (capture, non-passive); mouse: Shift-click adds a finger
 src/ui.js       HUD, mode and settings sheets, install banner
-src/promo.js    Premium mock, the 5 promo screens and their triggers
+src/promo.js    Pro mock, the 5 promo screens and their triggers
 src/audio.js    Web Audio synth
 src/haptics.js  vibrate / iOS switch tick
 src/i18n.js     EN / RU / UK strings, prices in the region's currency

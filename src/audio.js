@@ -147,88 +147,91 @@ function noise({ at = 0, dur = 0.08, gain = 0.15, f = 2000, f2 = 0, q = 1, type 
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26];
 const note = (semi, base = 523.25) => base * Math.pow(2, semi / 12);
 
+// Digital, UI-like palette: short sine blips, clicks, a two-tone "lock-on".
 export const sfx = {
   down(i = 0) {
     if (!ok()) return;
-    const f = note(PENTA[i % PENTA.length]);
-    tone({ f, f2: f * 1.01, dur: 0.32, gain: 0.2, wet: 0.3 });
-    tone({ f: f * 2, dur: 0.12, gain: 0.05, type: 'triangle', wet: 0.2 });
-    noise({ dur: 0.025, gain: 0.05, f: 4200, q: 0.8, wet: 0 });
+    const f = note(PENTA[i % PENTA.length], 659.25);
+    tone({ f, dur: 0.16, att: 0.002, gain: 0.16, wet: 0.18 });
+    tone({ f: f * 2, dur: 0.05, att: 0.001, gain: 0.025, type: 'square', lp: 5000, wet: 0 });
+    noise({ dur: 0.012, gain: 0.05, f: 5200, q: 0.7, wet: 0 });
   },
   up() {
     if (!ok()) return;
-    tone({ f: 620, f2: 380, dur: 0.16, gain: 0.09, wet: 0.15 });
+    tone({ f: 540, f2: 320, dur: 0.1, gain: 0.07, wet: 0.08 });
   },
   tick(p = 0) {
     if (!ok()) return;
-    tone({ f: 1250 + 700 * p, dur: 0.05, gain: 0.08 + 0.05 * p, type: 'triangle', wet: 0.12 });
-    noise({ dur: 0.02, gain: 0.04, f: 3000, q: 2, wet: 0 });
+    tone({ f: 2100 + 900 * p, dur: 0.028, att: 0.001, gain: 0.035 + 0.03 * p, type: 'square', lp: 6500, wet: 0.05 });
+    noise({ dur: 0.01, gain: 0.03, f: 6000, q: 1.5, wet: 0 });
   },
   charge() {
     if (!ok()) return;
-    tone({ f: 140, f2: 620, dur: 0.24, gain: 0.07, type: 'sawtooth', lp: 1400, wet: 0.2 });
-    noise({ dur: 0.24, gain: 0.05, f: 600, f2: 5000, q: 0.9, wet: 0.2 });
+    tone({ f: 260, f2: 1250, dur: 0.22, gain: 0.05, wet: 0.15 });
+    noise({ dur: 0.22, gain: 0.03, f: 1200, f2: 7000, q: 0.8, type: 'highpass', wet: 0.1 });
   },
   win() {
     if (!ok()) return;
-    tone({ f: 92, f2: 46, dur: 0.32, gain: 0.32, wet: 0 });
-    [0, 4, 7, 12, 16].forEach((s, i) => tone({ f: note(s), at: i * 0.055, dur: 1.1, gain: 0.1, type: 'triangle', wet: 0.5 }));
-    [24, 31, 36].forEach((s, i) => tone({ f: note(s), at: 0.18 + i * 0.07, dur: 0.6, gain: 0.03, wet: 0.7 }));
+    tone({ f: 70, f2: 42, dur: 0.28, att: 0.002, gain: 0.3, wet: 0 });
+    tone({ f: 1318.5, dur: 0.07, att: 0.002, gain: 0.07, type: 'square', lp: 5200, wet: 0.2 });
+    tone({ f: 1975.5, at: 0.085, dur: 0.11, att: 0.002, gain: 0.07, type: 'square', lp: 5200, wet: 0.25 });
+    [0, 7, 12, 19].forEach((s, i) => tone({ f: note(s, 440), at: 0.16 + i * 0.03, dur: 1.1, att: 0.02, gain: 0.04, wet: 0.55 }));
   },
   pick(i = 0) {
     if (!ok()) return;
-    const f = note(PENTA[(i + 2) % PENTA.length]);
-    tone({ f, dur: 0.5, gain: 0.14, type: 'triangle', wet: 0.45 });
-    tone({ f: f * 1.5, dur: 0.35, gain: 0.05, wet: 0.4 });
+    const f = note(PENTA[(i + 3) % PENTA.length], 659.25);
+    tone({ f, dur: 0.12, att: 0.002, gain: 0.08, type: 'square', lp: 4200, wet: 0.2 });
+    tone({ f: f * 1.5, at: 0.06, dur: 0.18, gain: 0.06, wet: 0.3 });
   },
   team(k = 0) {
     if (!ok()) return;
     const roots = [0, 5, 7, 9];
     const r = roots[k % roots.length];
-    tone({ f: note(r - 5), dur: 0.55, gain: 0.13, type: 'triangle', wet: 0.4 });
-    tone({ f: note(r + 2), at: 0.07, dur: 0.55, gain: 0.1, type: 'triangle', wet: 0.45 });
+    tone({ f: note(r, 440), dur: 0.12, att: 0.002, gain: 0.08, type: 'square', lp: 3800, wet: 0.2 });
+    tone({ f: note(r + 7, 440), at: 0.07, dur: 0.22, gain: 0.07, wet: 0.3 });
   },
   order(i = 0) {
     if (!ok()) return;
-    const f = note(PENTA[i % PENTA.length]);
-    tone({ f, dur: 0.6, gain: 0.15, wet: 0.45 });
-    tone({ f: f * 2.76, dur: 0.18, gain: 0.03, wet: 0.3 });
+    const f = note(PENTA[i % PENTA.length], 523.25);
+    tone({ f, dur: 0.14, att: 0.002, gain: 0.08, type: 'square', lp: 4000, wet: 0.2 });
+    tone({ f: f * 2, dur: 0.08, gain: 0.03, wet: 0.2 });
   },
   hop(i = 0) {
     if (!ok()) return;
-    tone({ f: i % 2 ? 1180 : 1320, dur: 0.035, gain: 0.05, type: 'square', lp: 3200, wet: 0.05 });
+    tone({ f: i % 2 ? 1500 : 1680, dur: 0.022, att: 0.001, gain: 0.04, type: 'square', lp: 5000, wet: 0.03 });
   },
   pop() {
     if (!ok()) return;
-    noise({ dur: 0.16, gain: 0.28, f: 900, f2: 250, q: 1.4, wet: 0.2 });
-    tone({ f: 420, f2: 60, dur: 0.22, gain: 0.22, wet: 0.1 });
+    noise({ dur: 0.12, gain: 0.22, f: 1400, f2: 300, q: 1.2, wet: 0.12 });
+    tone({ f: 380, f2: 55, dur: 0.18, gain: 0.18, wet: 0.05 });
   },
   ready() {
     if (!ok()) return;
-    tone({ f: 110, dur: 1.4, att: 0.3, gain: 0.06, wet: 0.3 });
-    tone({ f: 165, dur: 1.4, att: 0.3, gain: 0.04, wet: 0.3 });
+    tone({ f: 110, dur: 1.4, att: 0.3, gain: 0.05, wet: 0.3 });
+    tone({ f: 220.5, dur: 1.4, att: 0.3, gain: 0.025, wet: 0.3 });
   },
   go() {
     if (!ok()) return;
-    tone({ f: 988, dur: 0.2, gain: 0.12, type: 'square', lp: 4000, wet: 0.2 });
-    tone({ f: 1976, dur: 0.16, gain: 0.05, wet: 0.2 });
+    tone({ f: 1046.5, dur: 0.09, att: 0.001, gain: 0.1, type: 'square', lp: 5000, wet: 0.15 });
+    tone({ f: 1568, at: 0.09, dur: 0.16, att: 0.001, gain: 0.1, type: 'square', lp: 5000, wet: 0.2 });
   },
   buzz() {
     if (!ok()) return;
-    tone({ f: 98, dur: 0.34, gain: 0.12, type: 'sawtooth', lp: 900, wet: 0.05 });
-    tone({ f: 104, dur: 0.34, gain: 0.1, type: 'sawtooth', lp: 900, wet: 0.05 });
+    tone({ f: 98, dur: 0.3, gain: 0.11, type: 'sawtooth', lp: 900, wet: 0.05 });
+    tone({ f: 104, dur: 0.3, gain: 0.09, type: 'sawtooth', lp: 900, wet: 0.05 });
   },
   ui() {
     if (!ok()) return;
-    tone({ f: 1700, dur: 0.035, gain: 0.035, wet: 0 });
+    tone({ f: 2400, dur: 0.016, att: 0.001, gain: 0.025, wet: 0 });
   },
   sparkle() {
     if (!ok()) return;
-    [24, 28, 31, 36, 40].forEach((s, i) => tone({ f: note(s), at: i * 0.045, dur: 0.4, gain: 0.035, wet: 0.7 }));
+    [12, 16, 19, 24].forEach((s, i) => tone({ f: note(s, 523.25), at: i * 0.05, dur: 0.12, att: 0.002, gain: 0.03, type: 'square', lp: 4500, wet: 0.4 }));
   },
   success() {
     if (!ok()) return;
-    [0, 4, 7, 11, 14].forEach((s, i) => tone({ f: note(s), at: i * 0.06, dur: 1.2, gain: 0.09, type: 'triangle', wet: 0.55 }));
-    tone({ f: 80, f2: 45, dur: 0.3, gain: 0.25, wet: 0 });
+    tone({ f: 70, f2: 42, dur: 0.25, gain: 0.22, wet: 0 });
+    [0, 4, 7, 12].forEach((s, i) => tone({ f: note(s, 523.25), at: i * 0.07, dur: 0.16, att: 0.002, gain: 0.06, type: 'square', lp: 4500, wet: 0.3 }));
+    tone({ f: note(19, 523.25), at: 0.3, dur: 0.9, att: 0.01, gain: 0.04, wet: 0.6 });
   },
 };

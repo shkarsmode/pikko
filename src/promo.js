@@ -4,7 +4,7 @@ import { sfx } from './audio.js';
 import { button, h, icon, modal, sheet, switchEl, toast } from './dom.js';
 import { haptic } from './haptics.js';
 import { fmtDate, prices, t } from './i18n.js';
-import { GIFT, ICONS, MODE_ICONS } from './icons.js';
+import { HERO, MODE_ICONS } from './icons.js';
 import { drop, load, save, saveStats, settings, stats } from './store.js';
 
 // ---------- premium state ----------
@@ -33,7 +33,7 @@ export const premium = {
   },
 };
 
-const LOCKED = new Set(['mode:n', 'mode:elim', 'mode:reaction', 'markers', 'palette:pastel', 'palette:sunset']);
+const LOCKED = new Set(['mode:n', 'mode:elim', 'mode:reaction', 'markers', 'palette:phosphor', 'palette:amber']);
 export const isPro = (feature) => LOCKED.has(feature);
 export const isLocked = (feature) => LOCKED.has(feature) && !premium.active();
 
@@ -135,6 +135,8 @@ export function onResume(awayMs) {
 }
 
 // ---------- shared pieces ----------
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
 function cta(label, fn, cls = 'cta') {
   const b = button({ class: cls }, [h('span', { class: 'spin' }), h('span', { class: 'lbl', text: label })], () => fn(b));
   return b;
@@ -149,34 +151,18 @@ function closeX(api, delay = 0) {
   return b;
 }
 
-function sparkles(n = 10) {
-  return h(
-    'div',
-    { class: 'sparkles', 'aria-hidden': 'true' },
-    Array.from({ length: n }, (_, i) =>
-      h('i', {
-        style: {
-          left: `${8 + Math.random() * 84}%`,
-          top: `${8 + Math.random() * 78}%`,
-          animationDelay: `${(i * 0.37) % 2.4}s`,
-          '--s': (0.6 + Math.random() * 0.8).toFixed(2),
-        },
-      }),
-    ),
-  );
-}
+const kicker = (text) => h('span', { class: 'kicker' }, h('i'), text);
 
-function confettiBurst() {
-  const cols = ['#FF4D6D', '#FFB020', '#2EE59D', '#38BDF8', '#9B7BFF', '#ffffff'];
+function pixels() {
+  const cols = ['#3DFF9A', '#4DD7FF', '#FFB547', '#ffffff'];
   return h(
     'div',
-    { class: 'confetti', 'aria-hidden': 'true' },
-    Array.from({ length: 34 }, (_, i) =>
+    { class: 'pixels', 'aria-hidden': 'true' },
+    Array.from({ length: 30 }, (_, i) =>
       h('i', {
         style: {
-          '--x': `${(Math.random() * 2 - 1) * 170}px`,
-          '--y': `${-80 - Math.random() * 190}px`,
-          '--r': `${Math.random() * 720 - 360}deg`,
+          '--x': `${(Math.random() * 2 - 1) * 160}px`,
+          '--y': `${-60 - Math.random() * 170}px`,
           background: cols[i % cols.length],
           animationDelay: `${Math.random() * 0.12}s`,
         },
@@ -200,11 +186,9 @@ function purchase(btn, { plan, days, host, after }) {
     const done = h(
       'div',
       { class: 'success' },
-      confettiBurst(),
-      h('div', {
-        class: 'tick',
-        html: '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>',
-      }),
+      pixels(),
+      h('div', { class: 'tick', html: '<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg>' }),
+      h('code', { class: 'ok-line', text: `status: 200 · premium: true` }),
       h('h2', { text: t('buy.ok') }),
       h('p', { text: days ? t('buy.trial', fmtDate(until)) : t('buy.forever') }),
       cta(t('buy.go'), () => host.api().close()),
@@ -215,28 +199,40 @@ function purchase(btn, { plan, days, host, after }) {
   }, 1100);
 }
 
-// ---------- 1. gift on first launch ----------
+// ---------- 1. first launch: a terminal that "activates" the trial ----------
 function gift(opts) {
   const v = variant('gift', 3, opts);
   let api;
   const box = h('div', { class: 'pm pm-gift' });
   const host = { el: box, api: () => api };
-  box.append(
-    h('div', { class: 'pm-rays', 'aria-hidden': 'true' }),
-    sparkles(12),
-    h('div', { class: 'pm-art', html: GIFT }),
-    h('h2', { class: 'pm-title', text: t(`gift.t${v}`) }),
-    h('p', { class: 'pm-sub', text: t(`gift.s${v}`) }),
+  const lines = [
+    ['cmd', '$ pikko unlock --trial 3d'],
+    ['ok', `✓ ${t('mode.n')} · ${t('mode.elim')} · ${t('mode.reaction')}`],
+    ['ok', `✓ ${t('mk.name')} · ≤24 ${t('term.players')}`],
+    ['ok', `✓ ${t('term.price')}: 0.00`],
+    ['dim', `# ${t('term.cancel')}`],
+  ];
+  const term = h(
+    'div',
+    { class: 'term' },
+    h('div', { class: 'term-bar' }, h('i'), h('i'), h('i'), h('span', { text: '~/pikko' })),
     h(
       'div',
-      { class: 'pm-chips' },
-      [t('mode.n'), t('mode.elim'), t('mode.reaction'), t('mk.name'), t('set.palette')].map((x) => h('span', { text: x })),
+      { class: 'term-body' },
+      lines.map(([k, text], i) => h('div', { class: `ln ${k}`, style: { '--i': i }, text })),
+      h('span', { class: 'caret' }),
     ),
-    cta(t('cta.claim'), (b) => purchase(b, { plan: 'trial', days: 3, host }), 'cta shine'),
+  );
+  box.append(
+    closeX(() => api),
+    kicker(t('gift.kicker')),
+    h('h2', { class: 'pm-title', text: t(`gift.t${v}`) }),
+    h('p', { class: 'pm-sub', text: t(`gift.s${v}`) }),
+    term,
+    cta(t('cta.claim'), (b) => purchase(b, { plan: 'trial', days: 3, host })),
     button({ class: 'ghost' }, t('cta.later'), () => api.close()),
     h('p', { class: 'fine', text: t('demo.note') }),
   );
-  box.prepend(closeX(() => api));
   api = modal({ cls: 'pm-center gift-modal', content: box, label: t(`gift.t${v}`), onClose: closed });
   sfx.sparkle();
   haptic('light');
@@ -253,32 +249,10 @@ function paywall(opts) {
   const box = h('div', { class: 'pm pm-paywall' });
   const host = { el: box, api: () => api };
 
-  const orbs = ['#FF4D6D', '#FFB020', '#2EE59D', '#38BDF8', '#9B7BFF', '#F15BB5'];
-  const hero = h(
-    'div',
-    { class: 'pw-hero', 'aria-hidden': 'true' },
-    h('div', { class: 'pw-core' }),
-    h(
-      'div',
-      { class: 'pw-orbit' },
-      orbs.map((c, i) => h('i', { style: { '--a': `${(i * 360) / orbs.length}deg`, '--c': c } })),
-    ),
-    h(
-      'div',
-      { class: 'pw-orbit two' },
-      orbs.slice(0, 3).map((c, i) => h('i', { style: { '--a': `${i * 120 + 40}deg`, '--c': c } })),
-    ),
-  );
-
-  const feats = [
-    ['sparkle', t('feat.modes')],
-    ['tap', t('feat.markers')],
-    ['palette', t('feat.colors')],
-    ['heart', t('feat.support')],
-  ].map(([ic, text]) => h('li', null, icon(ic, 'ic feat-ic'), h('span', { text })));
+  const feats = [t('feat.modes'), t('feat.markers'), t('feat.colors'), t('feat.support')].map((text) => h('li', null, icon('check', 'ic feat-ic'), h('span', { text })));
 
   const planDefs = {
-    year: { title: t('plan.year'), price: t('plan.perYear', P.fmt(P.raw.year)), note: `≈ ${t('plan.perWeek', P.yearPerWeek)}`, badge: t('plan.best'), save: `−${P.save}%` },
+    year: { title: t('plan.year'), price: t('plan.perYear', P.fmt(P.raw.year)), note: `≈ ${t('plan.perWeek', P.yearPerWeek)}`, badge: `−${P.save}%` },
     week: { title: t('plan.week'), price: t('plan.perWeek', P.fmt(P.raw.week)), note: '' },
     life: { title: t('plan.life'), price: t('plan.once', P.fmt(P.raw.life)), note: '' },
   };
@@ -290,11 +264,10 @@ function paywall(opts) {
       const card = button(
         { class: 'plan', role: 'radio', 'data-plan': id },
         [
-          d.badge ? h('span', { class: 'plan-badge', text: d.badge }) : null,
           h('span', { class: 'plan-radio' }),
-          h('span', { class: 'plan-main' }, h('b', { text: d.title }), d.note ? h('small', { text: d.note }) : null),
-          h('span', { class: 'plan-price' }, h('b', { text: d.price }), d.save ? h('small', { class: 'save', text: d.save }) : null),
-          id === 'year' ? h('span', { class: 'plan-trial', text: t('plan.trial') }) : null,
+          h('span', { class: 'plan-main' }, h('b', null, d.title, d.badge ? h('em', { class: 'plan-save', text: d.badge }) : null), d.note ? h('small', { text: d.note }) : null),
+          h('span', { class: 'plan-price', text: d.price }),
+          id === 'year' ? h('span', { class: 'plan-trial', text: `// ${t('plan.trial')}` }) : null,
         ],
         () => {
           plan = id;
@@ -316,11 +289,11 @@ function paywall(opts) {
     },
     t('trial.toggle'),
   );
-  const trialRow = h('label', { class: 'trial-row' }, h('span', { text: t('trial.toggle') }), trialSw);
+  const trialRow = h('div', { class: 'trial-row' }, h('span', { text: t('trial.toggle') }), trialSw);
   const go = cta(t('cta.try'), (b) => {
     const days = plan === 'year' && trial ? 3 : plan === 'week' ? 7 : plan === 'year' ? 365 : 0;
     purchase(b, { plan: plan === 'year' && trial ? 'trial' : plan, days, host });
-  }, 'cta shine');
+  });
   const note = h('p', { class: 'fine strong' });
   const links = h(
     'div',
@@ -341,7 +314,8 @@ function paywall(opts) {
   sync();
 
   box.append(
-    hero,
+    h('div', { class: 'pw-hero', html: HERO }),
+    kicker('PIKKO PRO'),
     h('h2', { class: 'pm-title', text: t(`pw.t${v}`) }),
     h('p', { class: 'pm-sub', text: t(`pw.s${v}`) }),
     h('ul', { class: 'feats' }, feats),
@@ -357,7 +331,7 @@ function paywall(opts) {
   return api;
 }
 
-// ---------- 3. limited offer with a timer ----------
+// ---------- 3. limited offer: coupon + timer ----------
 function offer(opts) {
   const v = variant('offer', 2, opts);
   const P = prices();
@@ -381,28 +355,28 @@ function offer(opts) {
   tick();
   timer = setInterval(tick, 1000);
   const half = P.raw.year / 2;
-  const halfFmt = P.fmt(P.cur === 'RUB' || P.cur === 'UAH' ? Math.round(half) : Math.floor(half * 100) / 100 + 0.0);
+  const halfFmt = P.fmt(P.cur === 'RUB' || P.cur === 'UAH' ? Math.round(half) : Math.floor(half * 100) / 100);
+  const coupon = button({ class: 'coupon' }, [h('code', { text: 'PIKKO-50' }), h('small', { text: t('of.applied') })], () => toast(t('of.applied')));
   box.append(
-    h('div', { class: 'ticket' },
-      h('span', { class: 'of-badge', text: t('of.badge') }),
+    h(
+      'div',
+      { class: 'ticket' },
+      closeX(() => api),
+      kicker(t('of.badge')),
       h('div', { class: 'of-big', text: '−50%' }),
       h('h2', { class: 'pm-title', text: t(`of.t${v}`) }),
       h('p', { class: 'pm-sub', text: t(`of.s${v}`) }),
       clock,
-      h('div', { class: 'tear', 'aria-hidden': 'true' }),
-      h('div', { class: 'of-price' },
-        h('s', { text: P.fmt(P.raw.year) }),
-        h('b', { text: halfFmt }),
-        h('small', { text: t('plan.year') })),
+      coupon,
+      h('div', { class: 'of-price' }, h('s', { text: P.fmt(P.raw.year) }), h('b', { text: halfFmt }), h('small', { text: t('of.per') })),
       cta(t('cta.offer'), (b) => {
         clearInterval(timer);
         purchase(b, { plan: 'year-offer', days: 365, host });
-      }, 'cta hot shine'),
+      }),
       button({ class: 'ghost small' }, t('cta.noThanks'), () => api.close()),
       h('p', { class: 'fine', text: t('demo.note') }),
     ),
   );
-  box.prepend(closeX(() => api));
   api = modal({
     cls: 'pm-center offer-modal',
     content: box,
@@ -423,19 +397,17 @@ function unlock(opts) {
   const [kind, id] = feature.split(':');
   const name = kind === 'mode' ? t(`mode.${id}`) : kind === 'markers' ? t('mk.name') : t(`pal.${id}`);
   const desc = kind === 'mode' ? t(`mode.${id}.d`) : kind === 'markers' ? t('ul.mk.d') : t('ul.pal.d');
-  let art;
-  if (kind === 'mode') art = MODE_ICONS[id];
-  else if (kind === 'markers') art = MODE_ICONS.markers;
-  else art = ICONS.palette;
+  const art = kind === 'mode' ? MODE_ICONS[id] : kind === 'markers' ? MODE_ICONS.markers : MODE_ICONS.one;
   let api;
   const box = h('div', { class: 'pm pm-unlock' });
   const host = { el: box, api: () => api };
   box.append(
-    h('div', { class: `ul-art ul-${id || kind}` }, h('div', { class: 'ul-halo' }), h('div', { class: 'ul-icon', html: art }), h('span', { class: 'pro-badge big', text: 'PRO' })),
+    h('div', { class: `ul-art ul-${id || kind}` }, h('div', { class: 'ul-icon', html: art }), h('span', { class: 'ul-lock' }, icon('lock'))),
+    kicker(`${feature} · locked`),
     h('h2', { class: 'pm-title', text: t('ul.title', name) }),
     h('p', { class: 'pm-sub', text: desc }),
-    h('p', { class: 'ul-more' }, icon('sparkle', 'ic'), h('span', { text: t('ul.more') })),
-    cta(t('cta.try'), (b) => purchase(b, { plan: 'trial', days: 3, host, after: () => opts.onUnlocked && opts.onUnlocked() }), 'cta shine'),
+    h('p', { class: 'ul-more' }, icon('layers', 'ic'), h('span', { text: t('ul.more') })),
+    cta(t('cta.try'), (b) => purchase(b, { plan: 'trial', days: 3, host, after: () => opts.onUnlocked && opts.onUnlocked() })),
     button({ class: 'ghost' }, t('cta.all'), () => {
       api.close();
       setTimeout(() => show('paywall', { force: true }), 260);
@@ -447,20 +419,23 @@ function unlock(opts) {
   return api;
 }
 
-// ---------- 5. "don't go" win-back ----------
+// ---------- 5. "don't go" win-back: a code snippet that grants a week ----------
 function winback(opts) {
   const v = variant('winback', 2, opts);
   let api;
   const box = h('div', { class: 'pm pm-winback' });
   const host = { el: box, api: () => api };
+  const code = `<span class="k">if</span> (user.<span class="f">isLeaving</span>()) {
+  <span class="f">grant</span>(<span class="s">'premium'</span>, { days: <span class="n">7</span> });
+  <span class="c">// ${esc(t('wb.comment'))}</span>
+}`;
   box.append(
-    h('div', { class: 'wb-burst', 'aria-hidden': 'true' }),
-    sparkles(14),
-    h('div', { class: 'pm-art drop', html: GIFT }),
-    h('span', { class: 'wb-badge', text: t('wb.badge') }),
+    h('div', { class: 'wb-glow', 'aria-hidden': 'true' }),
+    kicker('exit_intent'),
     h('h2', { class: 'pm-title', text: t(`wb.t${v}`) }),
     h('p', { class: 'pm-sub', text: t(`wb.s${v}`) }),
-    cta(t('cta.week'), (b) => purchase(b, { plan: 'trial', days: 7, host }), 'cta light shine'),
+    h('div', { class: 'code' }, h('div', { class: 'code-bar' }, h('span', { text: 'exit.ts' }), h('span', { class: 'code-tag', text: t('wb.badge') })), h('pre', { html: code })),
+    cta(t('cta.week'), (b) => purchase(b, { plan: 'trial', days: 7, host })),
     button({ class: 'ghost' }, t('cta.leave'), () => api.close()),
     h('p', { class: 'fine', text: t('demo.note') }),
   );
