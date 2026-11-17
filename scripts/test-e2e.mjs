@@ -314,6 +314,16 @@ try {
   await waitFor(p, () => document.querySelector('.settings-sheet.open'), null, 3000);
   await sleep(600);
   await snap(p, '24-settings');
+  // a real finger swipe must scroll the sheet (the game area blocks scrolling)
+  const sw = await p.touchscreen.touchStart(196, 760);
+  for (let i = 1; i <= 12; i++) {
+    await sw.move(196, 760 - i * 38);
+    await sleep(16);
+  }
+  await sw.end();
+  await sleep(500);
+  const swiped = await p.evaluate(() => document.querySelector('.settings-sheet .sheet-body').scrollTop);
+  check('settings sheet scrolls with a touch swipe', swiped > 100, `scrollTop ${swiped}`);
   await p.evaluate(() => document.querySelector('.settings-sheet .sheet-body').scrollTo(0, 99999));
   await sleep(300);
   await snap(p, '25-settings-bottom');

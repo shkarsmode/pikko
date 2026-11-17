@@ -47,7 +47,6 @@ body {
   inset: 0;
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
